@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "./ProgressBar";
 import { StepConcept } from "./StepConcept";
 import { ProblemRunner } from "./ProblemRunner";
+import { GraphRunner } from "./GraphRunner";
 import { CompletionMilestone } from "./CompletionMilestone";
 
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
@@ -39,6 +40,18 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     if (problemTotal === 0) return 1;
     const firstTryCount = Object.values(firstTry.current).filter(Boolean).length;
     return firstTryCount / problemTotal;
+  }
+
+  // Shared by both the scale and graph runners.
+  function handleAttempt(correct: boolean, mistake?: string) {
+    recordAttempt(lesson.id, stepIndex, correct, mistake);
+    if (!correct) {
+      hadWrong.current[stepIndex] = true;
+    } else {
+      firstTry.current[stepIndex] = !hadWrong.current[stepIndex];
+      awardPointsOnce(`${lesson.id}#${stepIndex}`, POINTS_PER_PROBLEM);
+      flashCorrect();
+    }
   }
 
   // Resume at the saved step once progress has loaded (step-level resume).
@@ -123,21 +136,19 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
 
       {step.type === "concept" ? (
         <StepConcept step={step} onContinue={advance} />
+      ) : step.interaction === "match-line" ? (
+        <GraphRunner
+          key={stepIndex}
+          step={step}
+          onContinue={advance}
+          onAttempt={handleAttempt}
+        />
       ) : (
         <ProblemRunner
           key={stepIndex}
           step={step}
           onContinue={advance}
-          onAttempt={(correct, mistake) => {
-            recordAttempt(lesson.id, stepIndex, correct, mistake);
-            if (!correct) {
-              hadWrong.current[stepIndex] = true;
-            } else {
-              firstTry.current[stepIndex] = !hadWrong.current[stepIndex];
-              awardPointsOnce(`${lesson.id}#${stepIndex}`, POINTS_PER_PROBLEM);
-              flashCorrect();
-            }
-          }}
+          onAttempt={handleAttempt}
         />
       )}
     </div>

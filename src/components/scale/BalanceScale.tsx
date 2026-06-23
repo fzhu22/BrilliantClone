@@ -15,6 +15,8 @@ export interface ScaleCapabilities {
   drag?: boolean;
   /** Tap a unit block to remove it from its pan (Lesson 2). */
   removeUnits?: boolean;
+  /** Tap a variable block to remove it too (variables on both sides). */
+  removeVars?: boolean;
   /** Split both pans into equal groups (Lesson 3). */
   split?: boolean;
 }
@@ -145,11 +147,16 @@ export function BalanceScale({
     setDrag(null);
   }
 
+  function isRemovable(item: Item): boolean {
+    if (item.locked) return false;
+    if (item.kind === "unit") return Boolean(capabilities.removeUnits);
+    return Boolean(capabilities.removeVars); // variable block
+  }
+
   function removeBlock(side: Side, index: number) {
-    if (disabled || !capabilities.removeUnits) return;
+    if (disabled) return;
     const item = state[side][index];
-    // Only free units are removable: variables and locked given blocks are fixed.
-    if (item.kind !== "unit" || item.locked) return;
+    if (!isRemovable(item)) return;
     // Return the removed block to the tray so it can always be dragged back on.
     onChange?.({
       state: removeFromPan(state, side, index),
@@ -199,8 +206,7 @@ export function BalanceScale({
           const { x, y } = blockPos(i, items.length, end.x, baseY - 3);
           const isVar = item.kind === "var";
           const locked = Boolean(item.locked);
-          const tappable =
-            capabilities.removeUnits && item.kind === "unit" && !locked;
+          const tappable = isRemovable(item);
           // Locked units are muted/gray; free units are blue; variables are mint.
           const fill = locked
             ? "var(--text-muted)"

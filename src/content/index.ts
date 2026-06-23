@@ -2,16 +2,18 @@ import type { Lesson, LessonMeta } from "./types";
 import { lesson1 } from "./lessons/lesson1";
 import { lesson2 } from "./lessons/lesson2";
 import { lesson3 } from "./lessons/lesson3";
+import { lesson4 } from "./lessons/lesson4";
+import { lesson5 } from "./lessons/lesson5";
 
 export const course = {
   id: "algebra-balance",
-  title: "Algebra: The Balance",
+  title: "Algebra: Balance to Lines",
   bigConcept:
-    "An equation is a balance. You solve it by keeping both sides equal.",
+    "An equation is a balance you solve by keeping both sides equal - and a line is just an equation you can see.",
 };
 
-/** Ordered course path: See it -> Keep it -> Use it. */
-export const lessons: Lesson[] = [lesson1, lesson2, lesson3];
+/** Ordered course path, easiest to hardest. */
+export const lessons: Lesson[] = [lesson1, lesson2, lesson3, lesson4, lesson5];
 
 export const lessonOrder: string[] = lessons.map((l) => l.id);
 

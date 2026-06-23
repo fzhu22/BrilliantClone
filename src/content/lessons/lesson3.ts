@@ -1,129 +1,94 @@
 import type { Lesson } from "../types";
 
-// Lesson 3 - "Solve by isolating the variable."
-// Small concept: combine the balance move with grouping (division) to solve
-// real one- and two-step equations.
+const units = (n: number) =>
+  Array.from({ length: n }, () => ({ kind: "unit" as const }));
+const xs = (n: number, weight: number) =>
+  Array.from({ length: n }, () => ({ kind: "var" as const, label: "x", weight }));
+
+// Lesson 3 - "Variables on both sides."
+// New move: take an x off BOTH sides to gather the variables together first.
+// The numbers stay small so the new idea (gather the x's) is the hard part.
 export const lesson3: Lesson = {
-  id: "isolate-and-solve",
-  title: "Solve by isolating the variable",
-  tag: "Use it",
-  subtitle: "Combine the moves to solve",
+  id: "variables-both-sides",
+  title: "Variables on both sides",
+  tag: "Both sides",
+  subtitle: "Gather the x's first",
   steps: [
-    // Pretest first - one step with multiplication. 3x = 12.
+    {
+      type: "concept",
+      title: "x can sit on both sides.",
+      body:
+        "When x appears on both pans, take one x off each side first. The scale stays level and the x's collect on one side.",
+    },
+    // 2x + 1 = x + 4  ->  x = 3
     {
       type: "problem",
-      prompt: "Split both sides into equal groups to find what one x weighs.",
-      interaction: "split-both-sides",
-      initial: {
-        left: [
-          { kind: "var", label: "x", weight: 4 },
-          { kind: "var", label: "x", weight: 4 },
-          { kind: "var", label: "x", weight: 4 },
-        ],
-        right: Array.from({ length: 12 }, () => ({ kind: "unit" as const })),
-      },
+      prompt: "Solve 2x + 1 = x + 4. Take an x off both sides first.",
+      interaction: "remove-both-sides",
+      removableVars: true,
+      initial: { left: [...xs(2, 3), ...units(1)], right: [...xs(1, 3), ...units(4)] },
       validator: { kind: "isolate-variable" },
       feedback: {
         correct:
-          "One mystery block balances 4 - so x = 4. Splitting both sides into 3 equal groups kept it fair.",
+          "Yes - x = 3! You took an x off both sides, then cleared the extra blocks.",
         byMistake: {
           "one-side-only":
-            "You split one side but not the other, so the scale tipped. Split both sides into the same number of groups.",
-          unbalanced: "Not level - both sides must be split the same way.",
-          "not-isolated": "Keep going until just one mystery block is left on its side.",
+            "The scale tipped - whatever you remove from one side, remove from the other.",
+          unbalanced: "Keep it level - mirror every move on both sides.",
+          "not-isolated":
+            "Keep going! Take an x off both sides, then take the same units off both sides.",
         },
-        default: "Split both pans into equal groups, then keep one group on each side.",
+        default: "Take one x off each side, then clear the extra blocks from both sides.",
       },
-      hint: "There are 3 mystery blocks. Split both sides into 3 equal groups.",
-      // Easier: fewer groups (2x = 8) to practice the split move.
-      easier: {
-        type: "problem",
-        prompt: "Warm-up: split both sides into equal groups to find one x.",
-        interaction: "split-both-sides",
-        initial: {
-          left: [
-            { kind: "var", label: "x", weight: 4 },
-            { kind: "var", label: "x", weight: 4 },
-          ],
-          right: Array.from({ length: 8 }, () => ({ kind: "unit" as const })),
-        },
-        validator: { kind: "isolate-variable" },
-        feedback: {
-          correct: "Nice - 2 groups, so one x balances 4. x = 4.",
-          byMistake: {
-            "one-side-only": "Split both sides into the same number of groups.",
-            unbalanced: "Keep it level - divide both pans the same way.",
-            "not-isolated": "Keep one group on each side so a single x is left.",
-          },
-          default: "There are 2 mystery blocks - split both sides into 2 groups.",
-        },
-        hint: "Set the groups to 2 and tap Split.",
-      },
+      hint: "Tap an x on the left and an x on the right to remove both. Then take 1 unit off each side.",
+      hintAfterAttempts: 1,
     },
     {
       type: "concept",
-      title: "Dividing is another fair move",
+      title: "Sometimes x's are left over.",
       body:
-        "Splitting both sides into the same number of groups keeps the scale level, just like adding or removing the same amount.",
+        "After gathering the x's you might have more than one. Then finish the way you always do: clear the units, then split.",
     },
-    // Challenge: two steps combined. 2x + 1 = 7.
+    // 3x + 1 = x + 5  ->  2x + 1 = 5  ->  x = 2
     {
       type: "problem",
-      prompt: "Solve for one x. This time you'll need both moves.",
+      prompt: "Solve 3x + 1 = x + 5.",
       interaction: "solve-equation",
-      initial: {
-        left: [
-          { kind: "var", label: "x", weight: 3 },
-          { kind: "var", label: "x", weight: 3 },
-          { kind: "unit" },
-        ],
-        right: Array.from({ length: 7 }, () => ({ kind: "unit" as const })),
-      },
+      removableVars: true,
+      initial: { left: [...xs(3, 2), ...units(1)], right: [...xs(1, 2), ...units(5)] },
       validator: { kind: "isolate-variable" },
       feedback: {
         correct:
-          "x = 3. You used both moves: take the same off both sides, then share both sides into equal groups.",
+          "Brilliant - x = 2! One x off both sides left 2x + 1 = 5, then you cleared 1 and split in two.",
         byMistake: {
-          "one-side-only": "The scale tipped - every move has to happen on both sides.",
-          unbalanced: "Keep it level. Do the same thing to both pans at each step.",
+          "one-side-only": "Every move happens on both sides.",
+          unbalanced: "Keep it level at each step.",
           "not-isolated":
-            "Not quite alone yet. Try removing the single block from both sides first, then split.",
+            "Take an x off both sides, then clear the units, then split what is left.",
         },
-        default: "First remove the single block from both sides, then split what's left.",
+        default: "Take an x off both sides, then solve the two-step that is left.",
       },
-      hint: "Step 1: remove the 1 single block from both sides (2x = 6). Step 2: split both sides into 2 groups.",
+      hint: "Take 1 x off each side (2x + 1 = 5), then 1 unit off each side (2x = 4), then split into 2.",
       hintAfterAttempts: 1,
       easierAfterAttempts: 1,
-      // Easier: the +1 is already cleared (2x = 6), so they practice just the split.
       easier: {
         type: "problem",
-        prompt: "Warm-up: the extra block is already gone. Split 2x = 6 to find one x.",
-        interaction: "split-both-sides",
-        initial: {
-          left: [
-            { kind: "var", label: "x", weight: 3 },
-            { kind: "var", label: "x", weight: 3 },
-          ],
-          right: Array.from({ length: 6 }, () => ({ kind: "unit" as const })),
-        },
+        prompt: "Warm-up: solve 2x + 1 = x + 3. Take an x off both sides.",
+        interaction: "remove-both-sides",
+        removableVars: true,
+        initial: { left: [...xs(2, 2), ...units(1)], right: [...xs(1, 2), ...units(3)] },
         validator: { kind: "isolate-variable" },
         feedback: {
-          correct: "Exactly - split into 2 groups and one x balances 3. x = 3.",
+          correct: "Take an x off both sides, clear 1 from each, and x = 2!",
           byMistake: {
-            "one-side-only": "Split both sides into the same number of groups.",
-            unbalanced: "Keep it level - divide both pans the same way.",
-            "not-isolated": "Keep one group on each side so a single x is left.",
+            "one-side-only": "Remove from both sides equally.",
+            unbalanced: "Keep it level.",
+            "not-isolated": "Take an x off both sides, then 1 unit off both sides.",
           },
-          default: "Split both sides into 2 equal groups.",
+          default: "Take one x off each side, then one unit off each side.",
         },
-        hint: "Set the groups to 2 and tap Split. Then go back and clear the +1 first.",
+        hint: "Remove an x from each pan, then a single block from each pan.",
       },
-    },
-    {
-      type: "concept",
-      title: "You solved an equation",
-      body:
-        "Every equation is a balance. You solve it by doing the same thing to both sides until x is alone. That's the whole trick.",
     },
   ],
 };

@@ -1,22 +1,16 @@
 # Algebra Course — Lesson Plan
 
 **Subject:** Algebra
-**Persona:** Middle school students (knows arithmetic, new to variables)
-**Goal:** A learn-by-doing course where each lesson teaches *one* small concept through hands-on interaction, instant feedback, and a responsive visual — no AI in the MVP.
+**Persona:** Middle school students, ages 11-14 (knows arithmetic, learning algebra)
+**Goal:** A learn-by-doing course where each lesson teaches one concept through hands-on interaction, instant feedback, and a responsive visual — no AI in the MVP.
 
 ---
 
 ## The Big Concept (what the whole course is about)
 
-**An equation is a balance. You solve it by keeping both sides equal.**
+**An equation is a balance you solve by keeping both sides equal — and a line is just an equation you can see.**
 
-All three lessons live inside this one idea and build directly on each other:
-
-1. **See it** — a level scale means two sides are equal; a mystery block is a variable. (What `=` and `x` mean.)
-2. **Keep it** — to stay balanced, do the same thing to both sides. (The move that solves equations.)
-3. **Use it** — apply the balance move step by step to isolate the variable and solve. (Putting it together.)
-
-By the end, a learner who started not knowing what `x` means can solve `2x + 1 = 7` and explain *why* each step is legal — because the scale stayed balanced.
+The course starts on an interactive balance scale (solving equations) and builds to a coordinate grid (graphing lines), so learners go from "what is x?" to "what does y = mx + b look like?"
 
 ---
 
@@ -25,98 +19,64 @@ By the end, a learner who started not knowing what `x` means can solve `2x + 1 =
 These apply to **every** lesson:
 
 - **Learn by doing, not by reading.** No videos, no walls of text. Each step is interactive.
-- **Pretest before teaching.** Drop the learner into a problem *before* explaining the concept. Let them try (and often get it wrong); the explanation lands *after* the struggle.
-- **One small concept per lesson.** Start with the simplest version of the idea to minimize cognitive load.
-- **Blocked practice.** Two or three similar problems in a row to build fluency, then combine ideas.
-- **Instant, specific feedback (<100ms).** Never a bare red X. Wrong answers get a short, hand-written explanation of *why*, keyed to the specific mistake / common misconception.
-- **Explain after correct answers too.** The concept reveal shows even when they get it right — that's often where understanding forms.
-- **Concepts build on one another.** Each lesson reuses and extends the last, all on the same scale.
-- **Bite-sized.** ~5 minutes each. Finishing should feel good.
-- **Responsive + multi-device.** All drag/tap interactions work with touch, mouse, and keyboard, and the visual scales cleanly across phone, tablet, and desktop in any orientation.
-- **Smooth at 60 FPS.** The scale tips and levels live as the learner acts.
-- **Persistent.** Progress saves continuously at the step level; a learner can leave mid-lesson and resume the exact step on any device.
+- **Pretest before teaching.** Drop the learner into a problem before explaining; the explanation lands after the attempt.
+- **One concept per lesson.** Start simple, then push to genuinely challenging.
+- **Instant, specific feedback (<100ms).** Wrong answers get a short, hand-written explanation keyed to the specific mistake.
+- **Scaffolding for stuck learners.** Hard problems offer a hint and an easier sub-problem after repeated misses.
+- **A guide character ("Sage").** A friendly avatar presents the instructions in short, plain-language bubbles and points at the control to use.
+- **Concepts build on one another.** Each lesson reuses and extends the last.
+- **Responsive + multi-device, smooth at 60 FPS, and persistent** (resume, streak, points, mastery).
 
-### One reusable visual engine
-The entire course reuses a **single** visual component — an interactive **balance scale** with pans, unit blocks, and labeled mystery blocks. Building one engine well (and reusing it three times) keeps the MVP scope realistic while letting each lesson go deep.
+### Two reusable visual engines
+- **Balance scale** — Lessons 1-3 (solving equations)
+- **Coordinate grid** — Lessons 4-5 (graphing lines)
 
 ---
 
-## Lesson 1 — A level scale means "equal"
+## Lesson 1 — Balance and the variable (Start)
 
-- **Small concept:** When a scale is level, the two sides weigh the same. That is exactly what `=` means, and a mystery block is a variable — an unknown weight.
-- **Signature interaction:** Drag unit blocks onto a pan and watch the beam tip until it levels.
+- **Concept:** A level scale is an equation; a letter `x` is an unknown weight. Solve by keeping both sides equal.
+- **Interactions:** drag-to-balance, choose-the-value, remove-from-both-sides.
+- **Climax:** one-step equations like `x + 6 = 13`.
 
-**Concrete step sequence:**
-1. **Pretest (no instruction yet).** Left pan holds 3 unit blocks; right pan is empty. Prompt: "Drag blocks onto the right pan until the scale is level." The beam tips in real time as blocks are added.
-   - Feedback if right side is lighter: "The right side is still up — it's lighter. Add another block."
-   - Feedback if right side is heavier: "Now the right side dropped — it's too heavy. Take one off."
-   - Feedback when level (3 = 3): "Level! Both pans weigh 3. When a scale balances, the two sides are equal — that's what the `=` sign means."
-2. **Concept reveal.** A short line + the leveled scale: "A balanced scale = an equation. Both sides are equal."
-3. **Introduce the variable.** A mystery block labeled `x` sits on the left; the right pan holds 5 unit blocks and the scale is already level. Prompt (tap a number): "If the scale is balanced, how much does `x` weigh?" Answer: 5.
-   - Feedback for a wrong number: "If `x` balanced 5 blocks, it must weigh the same as 5 blocks. Look at the right pan."
-   - Feedback correct: "Right — `x` is just a name for an unknown weight. Here it's 5."
-4. **Blocked practice.** Two more "what does `x` weigh?" problems with different totals (e.g. `x` vs 8; `x` vs 2).
+## Lesson 2 — Two-step equations (Build it)
 
-- **Misconceptions to write feedback for:**
-  - Treating `x` as a label/letter rather than a hidden number.
-  - Thinking the sides can differ and still be "equal."
+- **Concept:** Undo adding (remove), then undo multiplying (split into equal groups).
+- **Interactions:** split-both-sides, then combined solve.
+- **Climax:** `2x + 3 = 11`, `4x + 1 = 13` (with an easier warm-up if stuck).
 
-## Lesson 2 — Keep both sides equal
+## Lesson 3 — Variables on both sides (Both sides)
 
-- **Small concept:** To keep a scale level, you must do the *same thing to both sides*. This is the one move that solves equations.
-- **Signature interaction:** Tap blocks to remove (or add) the same amount from each pan; the beam stays level only if you keep it fair.
+- **Concept:** When `x` is on both pans, take one `x` off each side first to gather the variables, then finish normally.
+- **Interactions:** remove-both-sides and solve, now with **removable variable blocks**.
+- **Climax:** `2x + 3 = x + 7`, `3x + 2 = x + 8`.
 
-**Concrete step sequence:**
-1. **Pretest (no instruction yet).** A level scale: left pan has a mystery block `x` plus 2 unit blocks (`x + 2`); right pan has 6 unit blocks. Prompt: "Get the mystery block alone on its pan, keeping the scale level." The learner taps blocks to remove them.
-   - Feedback if they remove 2 from the left only: "The scale tipped — you took 2 off the left but not the right. Whatever you remove from one side, remove from the other."
-   - Feedback if they remove from the right only: "Now the left is heavier. To stay level, change both sides the same way."
-   - Feedback when they remove 2 from each side (leaving `x` = 4): "Still level! You removed 2 from both sides, so `x` is alone and equals 4."
-2. **Concept reveal.** "The rule that never breaks: do the same thing to both sides, and the scale stays balanced."
-3. **Blocked practice.** Two more isolate-the-variable problems using add/remove on both sides (e.g. `x + 5 = 9`; `x + 1 = 7`), each verified by the scale staying level.
+## Lesson 4 — Lines: y = mx + b (Graph it)
 
-- **Misconceptions to write feedback for:**
-  - Operating on only one side ("you removed 3 from the left but not the right").
-  - Removing unequal amounts from each side.
+- **Concept:** A line is `y = mx + b`: `b` is the y-intercept, `m` is the slope.
+- **Interaction:** drag the `m` and `b` sliders to match a dashed target line on a coordinate grid.
+- **Climax:** match `y = 2x - 1` and a downhill `y = -x + 3`.
 
-## Lesson 3 — Solve by isolating the variable
+## Lesson 5 — Slope: rise over run (Slope)
 
-- **Small concept:** Combine the balance move with grouping (division) to solve real one- and two-step equations.
-- **Signature interaction:** Tap to remove equal amounts from both sides, and tap to split both pans into equal groups; a "check" re-weighs to prove the equation is true.
-
-**Concrete step sequence:**
-1. **Pretest — one step with multiplication (no instruction yet).** A level scale: left pan has 3 mystery blocks (`3x`); right pan has 12 unit blocks. Prompt: "Find what one mystery block weighs, keeping the scale level." The learner splits both pans into 3 equal groups and keeps one group on each side.
-   - Feedback if they split only one side: "You split the left into 3 groups but left the right whole — the scale tipped. Split both sides into the same number of groups."
-   - Feedback correct (`x` = 4): "One mystery block balances 4 — so `x = 4`. Splitting both sides into 3 equal groups kept it fair."
-2. **Concept reveal.** "Dividing both sides by the same number is just another fair move. Same rule, new tool."
-3. **Challenge — two steps combined.** A level scale: left pan has 2 mystery blocks plus 1 unit block (`2x + 1`); right pan has 7 unit blocks. Prompt: "Solve for one mystery block." Expected moves: remove 1 from both sides (`2x = 6`), then split both sides into 2 groups (`x = 3`).
-   - Feedback if they try to split before removing the extra block: "Try removing the single block from both sides first, then split — otherwise the groups aren't even."
-   - Feedback correct: "`x = 3`. You used both moves: take the same off both sides, then share both sides into equal groups."
-4. **Check step.** Substitute back: the scale re-weighs `2(3) + 1` against `7` and levels. "It balances — your answer is correct."
-
-- **Misconceptions to write feedback for:**
-  - Dividing/grouping only one side.
-  - Doing the two steps in the wrong order (dividing before clearing the added term).
+- **Concept:** Slope `m` is rise over run — how far the line climbs for each step right. A flat line is `0`, slopes can be fractions, and downhill is negative.
+- **Interaction:** match-line on the grid, now with a half-step slope slider for fractional slopes.
+- **Climax:** match a flat `y = 3`, a gentle `y = ½x − 1`, and a steep downhill `y = −2x + 2`.
 
 ---
 
 ## Why this sequence
 
-It is one idea taught three times, each time with a new move, all on the same scale:
+It is one through-line, getting harder each step: **read x -> one-step -> two-step -> variables on both sides -> graph a line -> read its slope.** The balance metaphor carries solving all the way through Lesson 3, then Lessons 4-5 reveal that an equation can be *drawn* as a line, tying symbolic algebra to its picture. Every problem has a concrete misconception to write targeted feedback against.
 
-**equal (see it) → same-thing-to-both-sides (keep it) → isolate & solve (use it)**
-
-Because every lesson reuses the balance metaphor and the single visual engine, the learner never context-switches — they just get a sharper tool for the same job. Lesson 3's two-step problem visibly combines everything from Lessons 1 and 2, so finishing the course *feels* like mastering one coherent skill, not three disconnected tricks. Every step has a concrete misconception to write targeted feedback against.
-
-For the **MVP (Phase 1)**, Lesson 1 is built deep and polished as the single required lesson; Lessons 2 and 3 form the immediate course path that follows it.
+For the **MVP (Phase 1)**, Lesson 1 is the single required deep lesson; Lessons 2-5 extend the path with progressively harder material and a second visual engine.
 
 ---
 
 ## Content model note (for build)
 
-Each lesson will be authored as a structured JSON sequence of typed steps — `concept`, `problem`, `feedback` — never HTML blobs. Each `problem` step carries:
-- prompt
-- interaction type (for this course: `drag-balance`, `remove-both-sides`, `split-both-sides`, and `multiple-choice` for the "what does x weigh?" taps)
-- correct answer / validator (e.g. "sides level", "variable isolated", "x equals N")
-- hand-written feedback keyed to specific wrong answers / misconceptions
+Each lesson is authored as a structured, JSON-serializable sequence of typed steps — `concept` and `problem`. A problem is either:
+- a **scale problem** (`drag-balance`, `choose-number`, `remove-both-sides`, `split-both-sides`, `solve-equation`; optional `removableVars`), or
+- a **graph problem** (`match-line` with a `target` of `{ m, b }` and slider ranges).
 
-This is what lets us add lessons fast now, and (Phase 2) lets AI generate new balance-scale problems at the right difficulty later.
+Each problem carries a validator, hand-written feedback keyed to specific mistakes, an optional hint, and (for hard ones) an easier scaffolded sub-problem. This is what lets us add lessons fast now, and (Phase 2) lets AI generate new problems at the right difficulty later.

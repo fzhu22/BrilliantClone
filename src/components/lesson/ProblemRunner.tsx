@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Interaction, ProblemStep } from "@/content/types";
+import type { ScaleInteraction, ScaleProblemStep } from "@/content/types";
 import {
   validate,
   feedbackFor,
@@ -22,22 +22,22 @@ import { Mascot } from "./Mascot";
 
 // One simple, middle-school-friendly instruction per interaction. Kept to a
 // single bubble so Sage doesn't take long to get through.
-const SAY: Record<Interaction, string> = {
+const SAY: Record<ScaleInteraction, string> = {
   "drag-balance":
     "Drag blocks onto the empty pan until both sides match. The gray blocks can't be moved.",
   "choose-number":
     "Tap the number that keeps the scale even. If x is across from 5 blocks, then x is 5.",
   "remove-both-sides":
-    "Take the same number of blocks off both sides until x is alone. For x + 2 = 6, take 2 off each side.",
+    "Take the same blocks off both sides until x is alone. You can take an x off each side too - just keep it fair.",
   "split-both-sides":
     "Split both sides into equal groups until one x is left. For 3x = 12, make 3 groups to get x = 4.",
   "solve-equation":
-    "First take the extra block off both sides, then split into equal groups. For 2x + 1 = 7, take 1 off each side, then make 2 groups.",
+    "First take the extra blocks off both sides, then split into equal groups. For 2x + 1 = 7, take 1 off each side, then make 2 groups.",
 };
 
 // Which on-screen feature Sage points to (and highlights) for each interaction.
 const FEATURES: Record<
-  Interaction,
+  ScaleInteraction,
   { tip: string; highlight?: "tray" | "split" | "blocks"; region: "scale" | "numbers" }
 > = {
   "drag-balance": {
@@ -47,7 +47,7 @@ const FEATURES: Record<
   },
   "choose-number": { tip: "Tap your answer below.", region: "numbers" },
   "remove-both-sides": {
-    tip: "Tap blocks right on the scale - same on both sides.",
+    tip: "Tap blocks right on the scale - take the same off both sides.",
     highlight: "blocks",
     region: "scale",
   },
@@ -63,14 +63,17 @@ const FEATURES: Record<
   },
 };
 
-function capabilitiesFor(interaction: Interaction): ScaleCapabilities {
+function capabilitiesFor(
+  interaction: ScaleInteraction,
+  removableVars?: boolean,
+): ScaleCapabilities {
   switch (interaction) {
     case "drag-balance":
     case "remove-both-sides":
-      return { drag: true, removeUnits: true };
+      return { drag: true, removeUnits: true, removeVars: removableVars };
     case "split-both-sides":
     case "solve-equation":
-      return { drag: true, removeUnits: true, split: true };
+      return { drag: true, removeUnits: true, removeVars: removableVars, split: true };
     case "choose-number":
       return {};
   }
@@ -81,14 +84,14 @@ export function ProblemRunner({
   onContinue,
   onAttempt,
 }: {
-  step: ProblemStep;
+  step: ScaleProblemStep;
   onContinue: () => void;
   onAttempt?: (correct: boolean, mistake?: string) => void;
 }) {
   const isChoose = step.interaction === "choose-number";
   const say = SAY[step.interaction];
   const feature = FEATURES[step.interaction];
-  const caps = capabilitiesFor(step.interaction);
+  const caps = capabilitiesFor(step.interaction, step.removableVars);
 
   const [state, setState] = useState(step.initial);
   const [tray, setTray] = useState(step.tray ?? []);
@@ -189,7 +192,9 @@ export function ProblemRunner({
       {/* Interaction */}
       {isChoose ? (
         <>
-          <BalanceScale state={state} capabilities={{}} disabled />
+          {(state.left.length > 0 || state.right.length > 0) && (
+            <BalanceScale state={state} capabilities={{}} disabled />
+          )}
           <NumberPad
             choices={step.choices ?? []}
             picked={picked}

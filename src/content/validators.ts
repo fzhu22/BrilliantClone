@@ -10,7 +10,8 @@ export interface ValidationResult {
 /** What the learner submits, normalized per interaction. */
 export type Attempt =
   | { kind: "scale"; state: ScaleState }
-  | { kind: "choice"; value: number };
+  | { kind: "choice"; value: number }
+  | { kind: "line"; m: number; b: number };
 
 export function itemWeight(item: Item): number {
   return item.kind === "unit" ? 1 : item.weight;
@@ -32,6 +33,17 @@ function isSingleVar(items: Item[]): boolean {
  * Pure, synchronous validation. Runs in well under the 100ms feedback budget.
  */
 export function validate(problem: ProblemStep, attempt: Attempt): ValidationResult {
+  // Graph problems are handled first; this also narrows `problem` to a scale
+  // step for the switch below (match-line is the only graph interaction).
+  if (problem.interaction === "match-line") {
+    if (attempt.kind !== "line") return { correct: false, mistake: "default" };
+    const slopeOk = attempt.m === problem.target.m;
+    const interceptOk = attempt.b === problem.target.b;
+    if (slopeOk && interceptOk) return { correct: true };
+    if (!slopeOk && !interceptOk) return { correct: false, mistake: "both-off" };
+    return { correct: false, mistake: slopeOk ? "intercept-off" : "slope-off" };
+  }
+
   const v = problem.validator;
 
   switch (v.kind) {

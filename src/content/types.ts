@@ -17,19 +17,23 @@ export interface ScaleState {
   right: Item[];
 }
 
-/** UI mechanic the learner uses on a problem. */
-export type Interaction =
+/** Scale-based mechanics the learner uses on a problem. */
+export type ScaleInteraction =
   | "drag-balance" // drag unit blocks onto a pan until it levels
   | "choose-number" // tap the number a mystery block weighs
   | "remove-both-sides" // remove equal amounts from both pans
   | "split-both-sides" // split both pans into equal groups
   | "solve-equation"; // combine remove + split to isolate the variable
 
+/** Every UI mechanic, including the coordinate-grid graphing one. */
+export type Interaction = ScaleInteraction | "match-line";
+
 /** Pure logic that decides correctness, decoupled from the UI mechanic. */
 export type ValidatorConfig =
   | { kind: "sides-equal" }
   | { kind: "choose-number"; answer: number }
-  | { kind: "isolate-variable" };
+  | { kind: "isolate-variable" }
+  | { kind: "match-line" };
 
 /** Hand-written, misconception-aware feedback. */
 export interface Feedback {
@@ -49,30 +53,55 @@ export interface ConceptStep {
   scale?: ScaleState;
 }
 
-export interface ProblemStep {
+/** Fields shared by every interactive problem. */
+interface ProblemBase {
   type: "problem";
   prompt: string;
-  interaction: Interaction;
+  feedback: Feedback;
+  /** Optional scaffolding for repeated misses (the "Sam" persona). */
+  hint?: string;
+  /** Show the hint after this many wrong attempts (default 2). */
+  hintAfterAttempts?: number;
+}
+
+/** A problem solved on the balance scale. */
+export interface ScaleProblemStep extends ProblemBase {
+  interaction: ScaleInteraction;
   /** Starting configuration of the scale. */
   initial: ScaleState;
   /** Blocks available to drag in (drag-balance). */
   tray?: Item[];
   /** Options for a choose-number problem. */
   choices?: number[];
+  /** Allow removing variable blocks too (variables on both sides). */
+  removableVars?: boolean;
   validator: ValidatorConfig;
-  feedback: Feedback;
-  /** Optional scaffolding for repeated misses (the "Sam" persona). */
-  hint?: string;
-  /** Show the hint after this many wrong attempts (default 2). */
-  hintAfterAttempts?: number;
   /**
    * Optional easier, scaffolded sub-problem offered after repeated misses.
    * Solving it returns the learner to this (main) problem to try again.
    */
-  easier?: ProblemStep;
+  easier?: ScaleProblemStep;
   /** Offer the easier step after this many wrong attempts (default 2). */
   easierAfterAttempts?: number;
 }
+
+/** A problem solved on the coordinate grid: match a target line y = mx + b. */
+export interface GraphProblemStep extends ProblemBase {
+  interaction: "match-line";
+  /** The line the learner must reproduce. */
+  target: { m: number; b: number };
+  /** Inclusive slider ranges for slope and intercept. */
+  mRange: [number, number];
+  bRange: [number, number];
+  /** Slider step size for both sliders (default 1). */
+  sliderStep?: number;
+  /** Per-axis step overrides (e.g. mStep 0.5 for a 1/2 slope). */
+  mStep?: number;
+  bStep?: number;
+  validator: { kind: "match-line" };
+}
+
+export type ProblemStep = ScaleProblemStep | GraphProblemStep;
 
 export type Step = ConceptStep | ProblemStep;
 

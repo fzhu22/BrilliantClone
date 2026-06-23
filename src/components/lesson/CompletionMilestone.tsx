@@ -51,7 +51,7 @@ export function CompletionMilestone({
       {/* Mastery result */}
       {mastered ? (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-4 py-1.5 text-sm font-bold text-warn">
-          <span aria-hidden>&#9733;</span> Mastered! {pct}% on the first try
+          <span aria-hidden>&#9733;</span> Mastered! {pct}% on the first try!
         </span>
       ) : (
         <div className="w-full rounded-2xl border border-info/30 bg-info/5 p-4 text-center">
@@ -78,8 +78,8 @@ export function CompletionMilestone({
         </div>
       ) : (
         <p className="text-muted">
-          That&apos;s the whole course &mdash; you can now solve real equations on the
-          balance. Nicely done.
+          That&apos;s the whole course &mdash; from balancing equations to graphing
+          lines and reading their slope. Nicely done!
         </p>
       )}
 
