@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Brilliant-style dark-first palette */
+  --bg: #0e1018;
+  --surface: #171a26;
+  --surface-2: #1f2433;
+  --border: #2a3142;
+  --text: #f4f6fb;
+  --text-muted: #9aa6bd;
+
+  /* Bright mint/teal-green: success + primary call-to-action */
+  --brand: #2dd4a7;
+  --brand-strong: #14b88a;
+  --success: #34d399;
+
+  /* Calmer blue: interactive elements + the balance-scale visual */
+  --info: #4f9dff;
+
+  /* Warm amber for "not yet / try again" so wrong answers feel safe, not harsh */
+  --warn: #f6a623;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100dvh;
+  /* Avoid rubber-band scroll bounce interfering with drag on touch devices. */
+  overscroll-behavior-y: none;
+}
+
+/* Prevent the page from scrolling / selecting while dragging on the scale. */
+.no-touch-scroll {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Clear, consistent keyboard focus indicator across the app. */
+:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

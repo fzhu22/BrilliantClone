@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "brilliant",
+    "staging": "brilliant-1fe5c"
+  },
+  "targets": {},
+  "etags": {}
+}
