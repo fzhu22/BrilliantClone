@@ -17,39 +17,49 @@ import {
 import { Button } from "@/components/ui/Button";
 import { NumberPad } from "@/components/ui/NumberPad";
 import { FeedbackBanner } from "./FeedbackBanner";
+import { AvatarCoach } from "./AvatarCoach";
+import { Mascot } from "./Mascot";
 
-// Clear, hand-written guidance per interaction: how to act, the goal, and a
-// concrete worked example so the objective is never ambiguous.
-const GUIDES: Record<Interaction, { how: string; goal: string; example: string }> = {
+// One simple, middle-school-friendly instruction per interaction. Kept to a
+// single bubble so Sage doesn't take long to get through.
+const SAY: Record<Interaction, string> = {
+  "drag-balance":
+    "Drag blocks onto the empty pan until both sides match. The gray blocks can't be moved.",
+  "choose-number":
+    "Tap the number that keeps the scale even. If x is across from 5 blocks, then x is 5.",
+  "remove-both-sides":
+    "Take the same number of blocks off both sides until x is alone. For x + 2 = 6, take 2 off each side.",
+  "split-both-sides":
+    "Split both sides into equal groups until one x is left. For 3x = 12, make 3 groups to get x = 4.",
+  "solve-equation":
+    "First take the extra block off both sides, then split into equal groups. For 2x + 1 = 7, take 1 off each side, then make 2 groups.",
+};
+
+// Which on-screen feature Sage points to (and highlights) for each interaction.
+const FEATURES: Record<
+  Interaction,
+  { tip: string; highlight?: "tray" | "split" | "blocks"; region: "scale" | "numbers" }
+> = {
   "drag-balance": {
-    how: "Drag blocks from the tray onto the empty pan. Tap a block you added to take it off. The gray blocks are fixed - you can't move them.",
-    goal: "Make the scale level - both sides weigh the same.",
-    example:
-      "Example: the left pan has 3 fixed blocks, so drag 3 blocks onto the right pan to balance it.",
+    tip: "Drag blocks from here onto the empty pan.",
+    highlight: "tray",
+    region: "scale",
   },
-  "choose-number": {
-    how: "Tap the number you think is correct.",
-    goal: "Pick the weight that keeps the scale balanced.",
-    example:
-      "Example: if x sits opposite 5 blocks on a level scale, then x weighs 5.",
-  },
+  "choose-number": { tip: "Tap your answer below.", region: "numbers" },
   "remove-both-sides": {
-    how: "Tap a block to remove it (it goes to the tray - drag it back anytime). Whatever you do to one side, do to the other.",
-    goal: "Get the mystery block x alone on its side, keeping the scale level.",
-    example:
-      "Example: for x + 2 = 6, take 2 blocks off each side. That leaves x = 4.",
+    tip: "Tap blocks right on the scale - same on both sides.",
+    highlight: "blocks",
+    region: "scale",
   },
   "split-both-sides": {
-    how: "Choose how many equal groups, then tap Split - it divides both sides at once. You can also tap or drag unit blocks.",
-    goal: "Get one mystery block alone, keeping the scale level.",
-    example:
-      "Example: for 3x = 12, split both sides into 3 groups. One x then balances 4.",
+    tip: "Use Split here to divide both sides at once.",
+    highlight: "split",
+    region: "scale",
   },
   "solve-equation": {
-    how: "Use both moves: tap to remove blocks from both sides, and Split into equal groups. Removed blocks go to the tray.",
-    goal: "Get one x alone and the scale level.",
-    example:
-      "Example: for 2x + 1 = 7, first remove 1 block from each side (2x = 6), then split both sides into 2 groups (x = 3).",
+    tip: "Clear extra blocks, then use Split here.",
+    highlight: "split",
+    region: "scale",
   },
 };
 
@@ -76,7 +86,8 @@ export function ProblemRunner({
   onAttempt?: (correct: boolean, mistake?: string) => void;
 }) {
   const isChoose = step.interaction === "choose-number";
-  const guide = GUIDES[step.interaction];
+  const say = SAY[step.interaction];
+  const feature = FEATURES[step.interaction];
   const caps = capabilitiesFor(step.interaction);
 
   const [state, setState] = useState(step.initial);
@@ -85,7 +96,9 @@ export function ProblemRunner({
   const [attempts, setAttempts] = useState(0);
   const [solved, setSolved] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
-  const [showExample, setShowExample] = useState(false);
+  const [inEasier, setInEasier] = useState(false);
+  // After Sage finishes the intro, point to the key feature (highlight + tip).
+  const [tourActive, setTourActive] = useState(false);
 
   function runCheck(attempt: Attempt) {
     const r = validate(step, attempt);
@@ -119,38 +132,59 @@ export function ProblemRunner({
   const message = result ? feedbackFor(step, result) : null;
   const showHint =
     !solved && Boolean(step.hint) && attempts >= (step.hintAfterAttempts ?? 2);
+  const showEasierOffer =
+    !solved &&
+    Boolean(step.easier) &&
+    attempts >= (step.easierAfterAttempts ?? 2);
 
   const l = sideTotal(state.left);
   const r = sideTotal(state.right);
   const balanced = l === r;
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Prompt */}
-      <h2 className="text-balance text-xl font-bold">{step.prompt}</h2>
-
-      {/* Clear how-to + goal */}
-      <div className="rounded-xl border border-border bg-surface p-3 text-sm">
-        <p className="text-muted">
-          <span className="font-semibold text-ink">How:</span> {guide.how}
-        </p>
-        <p className="mt-1.5 text-muted">
-          <span className="font-semibold text-brand">Goal:</span> {guide.goal}
-        </p>
+  // Detour: a simpler authored sub-problem to scaffold a stuck learner. It does
+  // not report attempts (no onAttempt), so it never affects mastery or points.
+  if (inEasier && step.easier) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm text-ink">
+          <span className="font-semibold text-info">Warm-up.</span> Try this simpler
+          version first, then we&apos;ll head back to the problem.
+        </div>
+        <ProblemRunner
+          step={step.easier}
+          onContinue={() => {
+            setInEasier(false);
+            restartProblem();
+          }}
+        />
         <button
           type="button"
-          onClick={() => setShowExample((s) => !s)}
-          className="mt-2 text-xs font-semibold text-info hover:underline"
-          aria-expanded={showExample}
+          onClick={() => setInEasier(false)}
+          className="text-xs font-semibold text-muted hover:text-ink"
         >
-          {showExample ? "Hide example" : "Show an example"}
+          Back to the problem
         </button>
-        {showExample && (
-          <p className="mt-1.5 rounded-lg bg-surface2 p-2 text-xs text-ink">
-            {guide.example}
-          </p>
-        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Sage teaches the problem in two short bubbles: the task, then how. */}
+      <AvatarCoach
+        messages={[step.prompt, say]}
+        onComplete={() => setTourActive(true)}
+      />
+
+      {/* Once Sage finishes, it "moves" to the feature: a tip + a highlight. */}
+      {tourActive && !solved && (
+        <div className="flex items-center gap-2 rounded-xl border border-brand/40 bg-brand/5 px-3 py-2 text-sm">
+          <span className="shrink-0">
+            <Mascot size={34} speaking />
+          </span>
+          <span className="text-ink">{feature.tip}</span>
+        </div>
+      )}
 
       {/* Interaction */}
       {isChoose ? (
@@ -161,6 +195,7 @@ export function ProblemRunner({
             picked={picked}
             correct={result ? result.correct : null}
             disabled={solved}
+            highlight={tourActive && feature.region === "numbers" && !solved}
             onPick={pickNumber}
           />
         </>
@@ -172,6 +207,7 @@ export function ProblemRunner({
             capabilities={caps}
             onChange={onScaleChange}
             disabled={solved}
+            highlight={tourActive && !solved ? feature.highlight : undefined}
           />
           {/* Live status so the goal is always observable */}
           <div className="flex items-center justify-center gap-3 text-sm">
@@ -202,6 +238,17 @@ export function ProblemRunner({
         <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm text-ink">
           <span className="font-semibold text-info">Hint:</span> {step.hint}
         </div>
+      )}
+
+      {/* Offer an easier scaffolded step when the learner is stuck */}
+      {showEasierOffer && (
+        <button
+          type="button"
+          onClick={() => setInEasier(true)}
+          className="rounded-xl border border-info/40 bg-info/10 px-4 py-2.5 text-sm font-semibold text-info transition-colors hover:bg-info/20"
+        >
+          Stuck? Try an easier version &rarr;
+        </button>
       )}
 
       {/* Actions */}

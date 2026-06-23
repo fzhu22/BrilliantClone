@@ -30,6 +30,8 @@ interface Props {
   capabilities?: ScaleCapabilities;
   onChange?: (next: ScaleChange) => void;
   disabled?: boolean;
+  /** Pulse-highlight a specific control while the avatar points at it. */
+  highlight?: "tray" | "split" | "blocks";
 }
 
 // ViewBox geometry. All drawing is in these coordinates; the SVG scales
@@ -77,6 +79,7 @@ export function BalanceScale({
   capabilities = {},
   onChange,
   disabled = false,
+  highlight,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{
@@ -179,18 +182,17 @@ export function BalanceScale({
           y1={end.y}
           x2={end.x}
           y2={baseY}
-          stroke="var(--border)"
+          stroke="var(--text-muted)"
           strokeWidth={2}
         />
-        {/* pan platform */}
+        {/* pan platform - light gray so it reads against the dark background */}
         <rect
           x={end.x - PAN_HALF}
           y={baseY}
           width={PAN_HALF * 2}
           height={8}
           rx={4}
-          fill="var(--surface-2)"
-          stroke="var(--border)"
+          fill="var(--text-muted)"
         />
         {/* blocks */}
         {items.map((item, i) => {
@@ -242,6 +244,9 @@ export function BalanceScale({
                 height={CELL}
                 rx={5}
                 fill={fill}
+                className={
+                  tappable && highlight === "blocks" ? "block-pulse" : undefined
+                }
                 stroke={
                   tappable
                     ? "var(--warn)"
@@ -285,12 +290,11 @@ export function BalanceScale({
         role="img"
         aria-label="Balance scale"
       >
-        {/* base + fulcrum */}
-        <rect x={120} y={296} width={160} height={10} rx={5} fill="var(--surface-2)" />
+        {/* base + fulcrum - light gray so the stand stands out from the dark bg */}
+        <rect x={120} y={296} width={160} height={10} rx={5} fill="var(--text-muted)" />
         <polygon
           points={`${PIVOT.x - 34},296 ${PIVOT.x + 34},296 ${PIVOT.x},${PIVOT.y}`}
-          fill="var(--surface)"
-          stroke="var(--border)"
+          fill="var(--text-muted)"
         />
         {/* beam */}
         <line
@@ -328,7 +332,11 @@ export function BalanceScale({
 
       {/* drag tray */}
       {capabilities.drag && tray.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface p-3">
+        <div
+          className={`mt-2 flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface p-3 ${
+            highlight === "tray" ? "feature-highlight" : ""
+          }`}
+        >
           <span className="mr-1 text-xs text-muted">Drag blocks:</span>
           {tray.map((item, i) => (
             <button
@@ -345,7 +353,11 @@ export function BalanceScale({
 
       {/* split control */}
       {showSplit && (
-        <div className="mt-2 flex flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3">
+        <div
+          className={`mt-2 flex flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3 ${
+            highlight === "split" ? "feature-highlight" : ""
+          }`}
+        >
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted">Split both sides into</span>
             <div className="flex items-center gap-2">

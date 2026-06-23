@@ -8,7 +8,9 @@ export function StreakBadge({ count }: { count: number }) {
       title={`${count}-day streak`}
       aria-label={`${count} day streak`}
     >
-      <span aria-hidden>&#128293;</span>
+      <span aria-hidden className="flame-flicker">
+        &#128293;
+      </span>
       {count}
     </span>
   );

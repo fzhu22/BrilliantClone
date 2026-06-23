@@ -5,6 +5,12 @@ import { useProgress } from "@/lib/progress";
 import { computeCourse, type LessonState } from "@/lib/courseStatus";
 
 function StatusPill({ s }: { s: LessonState }) {
+  if (s.mastered)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-warn/15 px-2.5 py-0.5 text-xs font-semibold text-warn">
+        <span aria-hidden>&#9733;</span> Mastered
+      </span>
+    );
   if (s.status === "completed")
     return (
       <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
@@ -34,6 +40,8 @@ function Node({ s, index }: { s: LessonState; index: number }) {
   // Numbered node with a checkmark / lock indicator.
   const base =
     "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold";
+  if (s.mastered)
+    return <div className={`${base} bg-warn text-bg`} aria-hidden>&#9733;</div>;
   if (s.completed)
     return <div className={`${base} bg-brand text-bg`} aria-hidden>&#10003;</div>;
   if (s.status === "locked")
@@ -66,7 +74,14 @@ function Card({ s, index }: { s: LessonState; index: number }) {
         </span>
         <StatusPill s={s} />
       </div>
-      <h3 className="mt-1 font-semibold">{s.title}</h3>
+      <h3 className="mt-1 flex items-center gap-1.5 font-semibold">
+        {s.title}
+        {s.mastered && (
+          <span className="text-warn" title="Mastered" aria-label="Mastered">
+            &#9733;
+          </span>
+        )}
+      </h3>
       <p className="text-sm text-muted">{s.subtitle}</p>
 
       {s.status === "in-progress" && (
@@ -78,6 +93,12 @@ function Card({ s, index }: { s: LessonState; index: number }) {
       {s.recommended && (
         <div className="mt-3 text-xs font-semibold text-brand">
           Recommended next &rarr;
+        </div>
+      )}
+
+      {s.needsReview && (
+        <div className="mt-3 text-xs font-semibold text-info">
+          Review to master{typeof s.accuracy === "number" ? ` (${Math.round(s.accuracy * 100)}% first try)` : ""} &rarr;
         </div>
       )}
     </div>

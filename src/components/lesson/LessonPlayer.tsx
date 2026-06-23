@@ -14,14 +14,32 @@ import { ProblemRunner } from "./ProblemRunner";
 import { CompletionMilestone } from "./CompletionMilestone";
 
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
-  const { progress, loading, saveStep, recordAttempt, completeLesson, awardPointsOnce } =
-    useProgress();
+  const {
+    progress,
+    loading,
+    saveStep,
+    recordAttempt,
+    completeLesson,
+    awardPointsOnce,
+    flashCorrect,
+  } = useProgress();
   const [stepIndex, setStepIndex] = useState(0);
   const [done, setDone] = useState(false);
   const hydrated = useRef(false);
 
+  // Per-session first-try tracking for the mastery (accuracy) signal.
+  const hadWrong = useRef<Record<number, boolean>>({});
+  const firstTry = useRef<Record<number, boolean>>({});
+
   const total = lesson.steps.length;
+  const problemTotal = lesson.steps.filter((s) => s.type === "problem").length;
   const step = lesson.steps[stepIndex];
+
+  function sessionAccuracy(): number {
+    if (problemTotal === 0) return 1;
+    const firstTryCount = Object.values(firstTry.current).filter(Boolean).length;
+    return firstTryCount / problemTotal;
+  }
 
   // Resume at the saved step once progress has loaded (step-level resume).
   useEffect(() => {
@@ -46,9 +64,19 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       saveStep(lesson.id, next);
     } else {
       setDone(true);
-      completeLesson(lesson.id);
+      completeLesson(lesson.id, sessionAccuracy());
       awardPointsOnce(`${lesson.id}#complete`, POINTS_PER_LESSON);
     }
+  }
+
+  // Replay the lesson from the start (used by "Replay to master"). The route is
+  // already this lesson, so we reset state in place rather than navigating.
+  function replayLesson() {
+    hadWrong.current = {};
+    firstTry.current = {};
+    setDone(false);
+    setStepIndex(0);
+    saveStep(lesson.id, 0);
   }
 
   if (loading && !hydrated.current) return <Spinner label="Loading your progress" />;
@@ -77,6 +105,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
         <CompletionMilestone
           lesson={lesson}
           nextLessonId={getNextLessonId(lesson.id)}
+          accuracy={sessionAccuracy()}
+          onReplay={replayLesson}
         />
       </div>
     );
@@ -100,8 +130,12 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           onContinue={advance}
           onAttempt={(correct, mistake) => {
             recordAttempt(lesson.id, stepIndex, correct, mistake);
-            if (correct) {
+            if (!correct) {
+              hadWrong.current[stepIndex] = true;
+            } else {
+              firstTry.current[stepIndex] = !hadWrong.current[stepIndex];
               awardPointsOnce(`${lesson.id}#${stepIndex}`, POINTS_PER_PROBLEM);
+              flashCorrect();
             }
           }}
         />

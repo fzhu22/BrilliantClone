@@ -3,19 +3,28 @@
 import Link from "next/link";
 import type { Lesson } from "@/content/types";
 import { getLesson } from "@/content";
-import { useProgress, POINTS_PER_LESSON } from "@/lib/progress";
+import { useProgress, POINTS_PER_LESSON, MASTERY_THRESHOLD } from "@/lib/progress";
 import { Button } from "@/components/ui/Button";
 
 export function CompletionMilestone({
   lesson,
   nextLessonId,
+  accuracy,
+  onReplay,
 }: {
   lesson: Lesson;
   nextLessonId?: string;
+  accuracy: number;
+  onReplay: () => void;
 }) {
   const { progress } = useProgress();
   const streak = progress.streak?.count ?? 0;
   const next = nextLessonId ? getLesson(nextLessonId) : undefined;
+
+  // Use the best-so-far stored accuracy if higher than this run's.
+  const bestAccuracy = Math.max(accuracy, progress.lessons?.[lesson.id]?.accuracy ?? 0);
+  const mastered = bestAccuracy >= MASTERY_THRESHOLD;
+  const pct = Math.round(bestAccuracy * 100);
 
   return (
     <div className="flex flex-col items-center gap-5 py-10 text-center">
@@ -38,6 +47,23 @@ export function CompletionMilestone({
           )}
         </div>
       </div>
+
+      {/* Mastery result */}
+      {mastered ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-4 py-1.5 text-sm font-bold text-warn">
+          <span aria-hidden>&#9733;</span> Mastered! {pct}% on the first try
+        </span>
+      ) : (
+        <div className="w-full rounded-2xl border border-info/30 bg-info/5 p-4 text-center">
+          <p className="text-sm text-ink">
+            You got <span className="font-semibold">{pct}%</span> right on the first
+            try. Replay to master this lesson.
+          </p>
+          <Button variant="secondary" onClick={onReplay} className="mt-3">
+            Replay to master
+          </Button>
+        </div>
+      )}
 
       {next ? (
         <div className="w-full rounded-2xl border border-border bg-surface p-4 text-left">

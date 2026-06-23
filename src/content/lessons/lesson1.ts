@@ -48,7 +48,7 @@ export const lesson1: Lesson = {
       type: "concept",
       title: "A balanced scale is an equation",
       body:
-        "When the beam is level, both sides weigh the same. That balance is exactly what the equals sign (=) means.",
+        "When the scale is level, both sides weigh the same. That is what the equals sign (=) means.",
     },
     // Introduce the variable as an unknown weight on an already-balanced scale.
     {
@@ -81,7 +81,7 @@ export const lesson1: Lesson = {
       type: "concept",
       title: "A variable is an unknown weight",
       body:
-        "A letter like x simply stands for a number we don't know yet. On a balanced scale, we can read it off the other side.",
+        "A letter like x is just a number we don't know yet. On a level scale, the other side tells us what it is.",
     },
     // Blocked practice: two more reads.
     {

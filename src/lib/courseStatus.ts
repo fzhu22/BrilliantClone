@@ -11,6 +11,10 @@ export interface LessonState {
   status: LessonStatus;
   unlocked: boolean;
   completed: boolean;
+  mastered: boolean;
+  /** Completed but not yet mastered - a good candidate for review. */
+  needsReview: boolean;
+  accuracy?: number;
   currentStepIndex: number;
   totalSteps: number;
   recommended: boolean;
@@ -27,6 +31,7 @@ export function computeCourse(progress: ProgressDoc): LessonState[] {
   const states: LessonState[] = lessons.map((l) => {
     const lp = progress.lessons?.[l.id];
     const completed = Boolean(lp?.completed);
+    const mastered = Boolean(lp?.mastered);
     const unlocked = prevCompleted;
     const currentStepIndex = lp?.currentStepIndex ?? 0;
 
@@ -46,6 +51,9 @@ export function computeCourse(progress: ProgressDoc): LessonState[] {
       status,
       unlocked,
       completed,
+      mastered,
+      needsReview: completed && !mastered,
+      accuracy: lp?.accuracy,
       currentStepIndex,
       totalSteps: l.steps.length,
       recommended: false,

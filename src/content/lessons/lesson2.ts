@@ -12,7 +12,7 @@ export const lesson2: Lesson = {
     // Pretest first - no instruction yet. x + 2 = 6.
     {
       type: "problem",
-      prompt: "Get the mystery block alone on its pan, keeping the scale level.",
+      prompt: "Get x by itself while keeping the scale level.",
       interaction: "remove-both-sides",
       initial: {
         left: [{ kind: "var", label: "x", weight: 4 }, { kind: "unit" }, { kind: "unit" }],
@@ -31,17 +31,39 @@ export const lesson2: Lesson = {
         default: "Keep the scale level and get x by itself.",
       },
       hint: "Remove the 2 single blocks from the left - and remove 2 from the right too.",
+      // Easier: only one block to remove from each side (x + 1 = 4).
+      easier: {
+        type: "problem",
+        prompt: "Warm-up: just one extra block. Remove 1 from each side to free x.",
+        interaction: "remove-both-sides",
+        initial: {
+          left: [{ kind: "var", label: "x", weight: 3 }, { kind: "unit" }],
+          right: Array.from({ length: 4 }, () => ({ kind: "unit" as const })),
+        },
+        validator: { kind: "isolate-variable" },
+        feedback: {
+          correct: "Level! One off each side leaves x = 3.",
+          byMistake: {
+            "one-side-only":
+              "It tipped - take the block off both sides, not just one.",
+            unbalanced: "Keep it level - change both sides the same way.",
+            "not-isolated": "Almost - x still has a block with it.",
+          },
+          default: "Remove 1 block from both sides.",
+        },
+        hint: "Tap the single block on the left, then a block on the right.",
+      },
     },
     {
       type: "concept",
       title: "The rule that never breaks",
       body:
-        "Do the same thing to both sides, and the scale stays balanced. Take 2 off the left? Take 2 off the right.",
+        "Do the same thing to both sides and the scale stays level. Take 2 off the left, take 2 off the right.",
     },
     // Blocked practice: x + 5 = 9.
     {
       type: "problem",
-      prompt: "Isolate x again - keep both sides equal.",
+      prompt: "Get x by itself again. Keep both sides equal.",
       interaction: "remove-both-sides",
       initial: {
         left: [

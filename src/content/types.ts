@@ -65,6 +65,13 @@ export interface ProblemStep {
   hint?: string;
   /** Show the hint after this many wrong attempts (default 2). */
   hintAfterAttempts?: number;
+  /**
+   * Optional easier, scaffolded sub-problem offered after repeated misses.
+   * Solving it returns the learner to this (main) problem to try again.
+   */
+  easier?: ProblemStep;
+  /** Offer the easier step after this many wrong attempts (default 2). */
+  easierAfterAttempts?: number;
 }
 
 export type Step = ConceptStep | ProblemStep;

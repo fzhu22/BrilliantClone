@@ -5,12 +5,14 @@ export function NumberPad({
   picked,
   correct,
   disabled,
+  highlight = false,
   onPick,
 }: {
   choices: number[];
   picked: number | null;
   correct: boolean | null;
   disabled: boolean;
+  highlight?: boolean;
   onPick: (value: number) => void;
 }) {
   return (
@@ -31,7 +33,9 @@ export function NumberPad({
             onClick={() => onPick(value)}
             disabled={disabled}
             aria-pressed={isPicked}
-            className={`min-h-[3.25rem] touch-manipulation rounded-xl border-2 py-4 text-xl font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-info disabled:cursor-not-allowed disabled:opacity-60 ${tone}`}
+            className={`min-h-[3.25rem] touch-manipulation rounded-xl border-2 py-4 text-xl font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-info disabled:cursor-not-allowed disabled:opacity-60 ${tone} ${
+              highlight && !isPicked ? "feature-highlight" : ""
+            }`}
           >
             {value}
           </button>

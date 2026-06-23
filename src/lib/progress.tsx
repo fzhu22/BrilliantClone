@@ -17,6 +17,10 @@ export interface LessonProgress {
   completed?: boolean;
   currentStepIndex?: number;
   attempts?: number;
+  /** Best-so-far share of problems solved on the first try (0..1). */
+  accuracy?: number;
+  /** True once accuracy reaches the mastery threshold. */
+  mastered?: boolean;
   updatedAt?: number;
 }
 
@@ -42,6 +46,9 @@ export interface ProgressDoc {
 export const POINTS_PER_PROBLEM = 10;
 export const POINTS_PER_LESSON = 25;
 
+/** Share of first-try-correct problems needed to "master" a lesson. */
+export const MASTERY_THRESHOLD = 0.8;
+
 /** A transient award event used to trigger the on-screen points animation. */
 export interface PointsBurst {
   id: number;
@@ -60,10 +67,13 @@ interface ProgressContextValue {
     correct: boolean,
     mistake?: string,
   ) => void;
-  completeLesson: (lessonId: string) => void;
+  completeLesson: (lessonId: string, sessionAccuracy: number) => void;
   /** Awards points for `key` only the first time (no farming via replays). */
   awardPointsOnce: (key: string, amount: number) => void;
   clearBurst: () => void;
+  /** Incrementing token; bump it to play the green correct-answer glow. */
+  correctFlashId: number;
+  flashCorrect: () => void;
   resetProgress: () => Promise<void>;
 }
 
@@ -76,6 +86,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState<ProgressDoc>({});
   const [loading, setLoading] = useState(true);
   const [burst, setBurst] = useState<PointsBurst | null>(null);
+  const [correctFlashId, setCorrectFlashId] = useState(0);
 
   // Mirror of the latest progress for read-modify-write without stale closures.
   const latest = useRef<ProgressDoc>({});
@@ -156,17 +167,23 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     write({ lessons: { [lessonId]: { attempts } }, history });
   }
 
-  function completeLesson(lessonId: string) {
+  function completeLesson(lessonId: string, sessionAccuracy: number) {
+    const prev = latest.current.lessons?.[lessonId];
+    // Keep the best accuracy across attempts so replays can raise mastery.
+    const accuracy = Math.max(prev?.accuracy ?? 0, sessionAccuracy);
+    const mastered = accuracy >= MASTERY_THRESHOLD;
     setProgress((p) => ({
       ...p,
       lessons: {
         ...p.lessons,
-        [lessonId]: { ...p.lessons?.[lessonId], completed: true },
+        [lessonId]: { ...p.lessons?.[lessonId], completed: true, accuracy, mastered },
       },
     }));
     write({
       streak: nextStreak(),
-      lessons: { [lessonId]: { completed: true, updatedAt: Date.now() } },
+      lessons: {
+        [lessonId]: { completed: true, accuracy, mastered, updatedAt: Date.now() },
+      },
     });
   }
 
@@ -183,6 +200,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   function clearBurst() {
     setBurst(null);
+  }
+
+  function flashCorrect() {
+    setCorrectFlashId((id) => id + 1);
   }
 
   async function resetProgress() {
@@ -207,6 +228,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         completeLesson,
         awardPointsOnce,
         clearBurst,
+        correctFlashId,
+        flashCorrect,
         resetProgress,
       }}
     >
