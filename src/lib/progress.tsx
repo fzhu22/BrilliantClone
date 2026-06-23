@@ -31,13 +31,28 @@ export interface AnswerEvent {
 export interface ProgressDoc {
   name?: string;
   streak?: Streak;
+  points?: number;
+  /** Keys of things already awarded points, so replays don't farm points. */
+  awarded?: string[];
   lessons?: Record<string, LessonProgress>;
   history?: AnswerEvent[];
+}
+
+/** Points awarded for a correct problem and for finishing a lesson. */
+export const POINTS_PER_PROBLEM = 10;
+export const POINTS_PER_LESSON = 25;
+
+/** A transient award event used to trigger the on-screen points animation. */
+export interface PointsBurst {
+  id: number;
+  amount: number;
 }
 
 interface ProgressContextValue {
   progress: ProgressDoc;
   loading: boolean;
+  points: number;
+  burst: PointsBurst | null;
   saveStep: (lessonId: string, stepIndex: number) => void;
   recordAttempt: (
     lessonId: string,
@@ -46,6 +61,9 @@ interface ProgressContextValue {
     mistake?: string,
   ) => void;
   completeLesson: (lessonId: string) => void;
+  /** Awards points for `key` only the first time (no farming via replays). */
+  awardPointsOnce: (key: string, amount: number) => void;
+  clearBurst: () => void;
   resetProgress: () => Promise<void>;
 }
 
@@ -57,6 +75,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [progress, setProgress] = useState<ProgressDoc>({});
   const [loading, setLoading] = useState(true);
+  const [burst, setBurst] = useState<PointsBurst | null>(null);
 
   // Mirror of the latest progress for read-modify-write without stale closures.
   const latest = useRef<ProgressDoc>({});
@@ -151,6 +170,21 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function awardPointsOnce(key: string, amount: number) {
+    if (amount <= 0) return;
+    const awarded = latest.current.awarded ?? [];
+    if (awarded.includes(key)) return; // already earned for this problem/lesson
+    const newAwarded = [...awarded, key];
+    const newTotal = (latest.current.points ?? 0) + amount;
+    setProgress((p) => ({ ...p, points: newTotal, awarded: newAwarded }));
+    setBurst({ id: Date.now() + Math.random(), amount });
+    write({ points: newTotal, awarded: newAwarded });
+  }
+
+  function clearBurst() {
+    setBurst(null);
+  }
+
   async function resetProgress() {
     const db = getDb();
     if (!user || !db) return;
@@ -166,9 +200,13 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       value={{
         progress,
         loading,
+        points: progress.points ?? 0,
+        burst,
         saveStep,
         recordAttempt,
         completeLesson,
+        awardPointsOnce,
+        clearBurst,
         resetProgress,
       }}
     >

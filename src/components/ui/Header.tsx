@@ -10,7 +10,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 
 export function Header() {
   const { user, configured, signOutUser } = useAuth();
-  const { progress, resetProgress } = useProgress();
+  const { progress, points, resetProgress } = useProgress();
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
 
@@ -32,7 +32,15 @@ export function Header() {
         </Link>
 
         {configured && user ? (
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-2 text-sm sm:gap-3">
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-1 font-semibold text-brand"
+              title={`${points} points`}
+              aria-label={`${points} points`}
+            >
+              <span aria-hidden>&#11088;</span>
+              {points}
+            </span>
             <StreakBadge count={progress.streak?.count ?? 0} />
             <span className="hidden text-muted sm:inline">
               Hi, <span className="font-semibold text-ink">{displayName(user)}</span>

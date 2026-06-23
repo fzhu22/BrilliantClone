@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { Lesson } from "@/content/types";
 import { getLesson } from "@/content";
-import { useProgress } from "@/lib/progress";
+import { useProgress, POINTS_PER_LESSON } from "@/lib/progress";
 import { Button } from "@/components/ui/Button";
 
 export function CompletionMilestone({
@@ -27,12 +27,16 @@ export function CompletionMilestone({
         <p className="mt-1 text-muted">
           You finished <span className="font-semibold text-ink">{lesson.title}</span>.
         </p>
-        {streak > 0 && (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-3 py-1 text-sm font-semibold text-warn">
-            <span aria-hidden>&#128293;</span> {streak}-day streak &mdash; come back
-            tomorrow!
-          </p>
-        )}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1 text-sm font-semibold text-brand">
+            <span aria-hidden>&#11088;</span> +{POINTS_PER_LESSON} points
+          </span>
+          {streak > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-3 py-1 text-sm font-semibold text-warn">
+              <span aria-hidden>&#128293;</span> {streak}-day streak
+            </span>
+          )}
+        </div>
       </div>
 
       {next ? (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Lesson } from "@/content/types";
 import { getNextLessonId } from "@/content";
-import { useProgress } from "@/lib/progress";
+import { useProgress, POINTS_PER_PROBLEM, POINTS_PER_LESSON } from "@/lib/progress";
 import { isUnlocked } from "@/lib/courseStatus";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +14,8 @@ import { ProblemRunner } from "./ProblemRunner";
 import { CompletionMilestone } from "./CompletionMilestone";
 
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
-  const { progress, loading, saveStep, recordAttempt, completeLesson } = useProgress();
+  const { progress, loading, saveStep, recordAttempt, completeLesson, awardPointsOnce } =
+    useProgress();
   const [stepIndex, setStepIndex] = useState(0);
   const [done, setDone] = useState(false);
   const hydrated = useRef(false);
@@ -46,6 +47,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     } else {
       setDone(true);
       completeLesson(lesson.id);
+      awardPointsOnce(`${lesson.id}#complete`, POINTS_PER_LESSON);
     }
   }
 
@@ -96,9 +98,12 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           key={stepIndex}
           step={step}
           onContinue={advance}
-          onAttempt={(correct, mistake) =>
-            recordAttempt(lesson.id, stepIndex, correct, mistake)
-          }
+          onAttempt={(correct, mistake) => {
+            recordAttempt(lesson.id, stepIndex, correct, mistake);
+            if (correct) {
+              awardPointsOnce(`${lesson.id}#${stepIndex}`, POINTS_PER_PROBLEM);
+            }
+          }}
         />
       )}
     </div>
