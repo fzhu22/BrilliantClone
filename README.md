@@ -10,7 +10,7 @@
 This is the **Phase 1 MVP** — it teaches entirely without AI. (AI features and
 learning-science layers are planned for later phases.)
 
-**Live demo:** _add your deployed URL here after running `firebase deploy`_
+**Live demo:** https://brilliant-1fe5c.web.app/
 
 ---
 
