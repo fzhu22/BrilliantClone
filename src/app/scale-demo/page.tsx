@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { BalanceScale, type ScaleChange, type ScaleCapabilities } from "@/components/scale/BalanceScale";
+import {
+  BalanceScale,
+  type ScaleChange,
+  type ScaleCapabilities,
+  type TrayEntry,
+} from "@/components/scale/BalanceScale";
 import { sideTotal } from "@/content/validators";
 import type { Item, ScaleState } from "@/content/types";
 
@@ -23,7 +28,9 @@ function Playground({
   capabilities: ScaleCapabilities;
 }) {
   const [state, setState] = useState<ScaleState>(initial);
-  const [tray, setTray] = useState<Item[]>(initialTray);
+  const [tray, setTray] = useState<TrayEntry[]>(() =>
+    initialTray.map((item) => ({ item })),
+  );
 
   const onChange = (next: ScaleChange) => {
     setState(next.state);
@@ -31,7 +38,7 @@ function Playground({
   };
   const reset = () => {
     setState(initial);
-    setTray(initialTray);
+    setTray(initialTray.map((item) => ({ item })));
   };
 
   const l = sideTotal(state.left);
@@ -93,7 +100,7 @@ export default function ScaleDemoPage() {
           left: [{ kind: "var", label: "x", weight: 4 }, { kind: "unit" }, { kind: "unit" }],
           right: units(6),
         }}
-        capabilities={{ drag: true, removeUnits: true }}
+        capabilities={{ drag: true, removeUnits: true, paired: true }}
       />
 
       <Playground
@@ -106,7 +113,7 @@ export default function ScaleDemoPage() {
           ],
           right: units(12),
         }}
-        capabilities={{ drag: true, removeUnits: true, split: true }}
+        capabilities={{ drag: true, removeUnits: true, split: true, paired: true }}
       />
 
       <Playground
@@ -119,7 +126,7 @@ export default function ScaleDemoPage() {
           ],
           right: units(7),
         }}
-        capabilities={{ drag: true, removeUnits: true, split: true }}
+        capabilities={{ drag: true, removeUnits: true, split: true, paired: true }}
       />
     </main>
   );

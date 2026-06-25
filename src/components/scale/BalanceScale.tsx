@@ -19,16 +19,35 @@ export interface ScaleCapabilities {
   removeVars?: boolean;
   /** Split both pans into equal groups (Lesson 3). */
   split?: boolean;
+  /**
+   * Enforce fair moves: tapping a block removes one matching block from BOTH
+   * pans at once. A tap is rejected if the other pan has nothing to match, so the
+   * scale always stays balanced and learners can't strip a side to guess the
+   * answer (they must Split to reduce a coefficient).
+   */
+  paired?: boolean;
+}
+
+/**
+ * A block (or matched pair) sitting in the tray. `from` records where it came
+ * from so a single tap sends it straight back (no fiddly drag needed):
+ *  - a `Side` for a single block removed in Lesson 1,
+ *  - `"both"` for a fair-move pair removed from both pans at once,
+ *  - `undefined` for blocks that were always in the tray (drag-to-balance).
+ */
+export interface TrayEntry {
+  item: Item;
+  from?: Side | "both";
 }
 
 export interface ScaleChange {
   state: ScaleState;
-  tray: Item[];
+  tray: TrayEntry[];
 }
 
 interface Props {
   state: ScaleState;
-  tray?: Item[];
+  tray?: TrayEntry[];
   capabilities?: ScaleCapabilities;
   onChange?: (next: ScaleChange) => void;
   disabled?: boolean;
@@ -87,11 +106,14 @@ export function BalanceScale({
   const [drag, setDrag] = useState<{
     trayIndex: number;
     item: Item;
+    /** Pan to fall back to when released off the pans (a tap on a removed block). */
+    from?: Side;
     x: number;
     y: number;
   } | null>(null);
   const [groups, setGroups] = useState(3);
   const [splitMsg, setSplitMsg] = useState<string | null>(null);
+  const [removeMsg, setRemoveMsg] = useState<string | null>(null);
 
   const tilt = tiltDegrees(state);
   const ends = endpoints(tilt);
@@ -124,7 +146,11 @@ export function BalanceScale({
     e.preventDefault();
     const { x, y } = toSvg(e.clientX, e.clientY);
     svgRef.current?.setPointerCapture(e.pointerId);
-    setDrag({ trayIndex, item: tray[trayIndex], x, y });
+    const entry = tray[trayIndex];
+    // Pair chips ("both") restore via a tap handler, not drag, so they never
+    // start a drag with a "both" origin here.
+    const from = entry.from === "both" ? undefined : entry.from;
+    setDrag({ trayIndex, item: entry.item, from, x, y });
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -136,15 +162,30 @@ export function BalanceScale({
   function onPointerUp(e: React.PointerEvent) {
     if (!drag) return;
     const { x, y } = toSvg(e.clientX, e.clientY);
-    const side = zoneAt(x, y);
-    if (side) {
+    // Dropped on a pan? Use it. Otherwise (a tap, or a release off the pans) send
+    // a removed block back where it came from so it can never get stuck.
+    const target = zoneAt(x, y) ?? drag.from ?? null;
+    if (target) {
+      setRemoveMsg(null);
       onChange?.({
-        state: addToPan(state, side, drag.item),
+        state: addToPan(state, target, drag.item),
         tray: tray.filter((_, i) => i !== drag.trayIndex),
       });
     }
     svgRef.current?.releasePointerCapture(e.pointerId);
     setDrag(null);
+  }
+
+  /** Put a removed block (or a fair-move pair) back where it came from. */
+  function restore(trayIndex: number) {
+    const entry = tray[trayIndex];
+    if (disabled || !entry?.from) return;
+    setRemoveMsg(null);
+    const next =
+      entry.from === "both"
+        ? addToPan(addToPan(state, "left", entry.item), "right", entry.item)
+        : addToPan(state, entry.from, entry.item);
+    onChange?.({ state: next, tray: tray.filter((_, i) => i !== trayIndex) });
   }
 
   function isRemovable(item: Item): boolean {
@@ -153,14 +194,46 @@ export function BalanceScale({
     return Boolean(capabilities.removeVars); // variable block
   }
 
+  /** Two blocks count as "the same" for a fair move: any unit, or an x of equal weight. */
+  function sameKind(a: Item, b: Item): boolean {
+    if (a.kind !== b.kind) return false;
+    if (a.kind === "unit" || b.kind === "unit") return a.kind === b.kind;
+    return a.label === b.label && a.weight === b.weight;
+  }
+
   function removeBlock(side: Side, index: number) {
     if (disabled) return;
     const item = state[side][index];
     if (!isRemovable(item)) return;
-    // Return the removed block to the tray so it can always be dragged back on.
+
+    // Fair-move removal: take a matching block off BOTH pans at once. If the
+    // other pan has no match, reject the move (this is what stops a learner from
+    // stripping one side and guessing instead of splitting).
+    if (capabilities.paired) {
+      const other: Side = side === "left" ? "right" : "left";
+      const matchIndex = state[other].findIndex(
+        (it) => !it.locked && sameKind(it, item),
+      );
+      if (matchIndex === -1) {
+        setRemoveMsg(
+          item.kind === "var"
+            ? `Keep it fair: there's no ${item.label} on the other pan to take off too.`
+            : "Keep it fair: there's no matching block on the other pan to take off too.",
+        );
+        return;
+      }
+      setRemoveMsg(null);
+      const afterFirst = removeFromPan(state, side, index);
+      const afterBoth = removeFromPan(afterFirst, other, matchIndex);
+      onChange?.({ state: afterBoth, tray: [...tray, { item, from: "both" }] });
+      return;
+    }
+
+    // Single removal (Lesson 1): send the block to the tray, remembering its pan
+    // so a single tap can put it right back (dragging also still works).
     onChange?.({
       state: removeFromPan(state, side, index),
-      tray: [...tray, item],
+      tray: [...tray, { item, from: side }],
     });
   }
 
@@ -174,6 +247,7 @@ export function BalanceScale({
       return;
     }
     setSplitMsg(null);
+    setRemoveMsg(null);
     onChange?.({ state: next, tray });
   }
 
@@ -336,24 +410,71 @@ export function BalanceScale({
         )}
       </svg>
 
-      {/* drag tray */}
+      {/* fair-move rejection (e.g. tapping an x with no x on the other pan) */}
+      {removeMsg && !disabled && (
+        <p className="mt-2 text-center text-xs text-warn">{removeMsg}</p>
+      )}
+
+      {/* tray: holds draggable blocks (Lesson 1) and blocks taken off the scale */}
       {capabilities.drag && tray.length > 0 && (
         <div
           className={`mt-2 flex flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-surface p-3 ${
             highlight === "tray" ? "feature-highlight" : ""
           }`}
         >
-          <span className="mr-1 text-xs text-muted">Drag blocks:</span>
-          {tray.map((item, i) => (
-            <button
-              key={i}
-              onPointerDown={(e) => startDrag(e, i)}
-              disabled={disabled}
-              aria-label="Unit block, drag onto a pan"
-              className="h-9 w-9 rounded-md bg-info shadow-card transition-transform active:scale-90 disabled:opacity-50"
-              style={{ touchAction: "none" }}
-            />
-          ))}
+          <span className="mr-1 text-xs text-muted">
+            {tray.some((t) => t.from) ? "Tap to put it back:" : "Drag blocks:"}
+          </span>
+          {tray.map((entry, i) => {
+            const label = entry.item.kind === "var" ? entry.item.label : "";
+            const isPair = entry.from === "both";
+            const removed = Boolean(entry.from);
+
+            // Fair-move pairs restore to both pans with a plain tap (no drag).
+            if (isPair) {
+              return (
+                <button
+                  key={i}
+                  onClick={() => restore(i)}
+                  disabled={disabled}
+                  title="Tap to put this pair back on both pans"
+                  aria-label={`Put the ${label || "unit"} pair back on both pans`}
+                  className="flex h-9 items-center justify-center gap-1 rounded-md border border-info/40 bg-info/15 px-2 text-sm font-bold text-info shadow-card transition-transform active:scale-90 disabled:opacity-50"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded bg-info text-bg">
+                    {label}
+                  </span>
+                  <span className="flex h-6 w-6 items-center justify-center rounded bg-info text-bg">
+                    {label}
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={i}
+                onPointerDown={(e) => startDrag(e, i)}
+                onKeyDown={(e) => {
+                  if ((e.key === "Enter" || e.key === " ") && removed) {
+                    e.preventDefault();
+                    restore(i);
+                  }
+                }}
+                disabled={disabled}
+                title={removed ? "Tap to put it back" : "Drag onto a pan"}
+                aria-label={
+                  removed
+                    ? `Put the ${label || "unit"} block back on the scale`
+                    : "Unit block, drag onto a pan"
+                }
+                className="flex h-9 w-9 items-center justify-center rounded-md bg-info text-sm font-bold text-bg shadow-card transition-transform active:scale-90 disabled:opacity-50"
+                style={{ touchAction: "none" }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       )}
 

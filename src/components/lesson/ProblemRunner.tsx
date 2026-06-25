@@ -13,6 +13,7 @@ import {
   BalanceScale,
   type ScaleCapabilities,
   type ScaleChange,
+  type TrayEntry,
 } from "@/components/scale/BalanceScale";
 import { Button } from "@/components/ui/Button";
 import { NumberPad } from "@/components/ui/NumberPad";
@@ -28,11 +29,11 @@ const SAY: Record<ScaleInteraction, string> = {
   "choose-number":
     "Tap the number that keeps the scale even. If x is across from 5 blocks, then x is 5.",
   "remove-both-sides":
-    "Take the same blocks off both sides until x is alone. You can take an x off each side too - just keep it fair.",
+    "Tap a block to take it off BOTH pans at once - that keeps the scale fair. Tap an x to clear one x from each side.",
   "split-both-sides":
     "Split both sides into equal groups until one x is left. For 3x = 12, make 3 groups to get x = 4.",
   "solve-equation":
-    "First take the extra blocks off both sides, then split into equal groups. For 2x + 1 = 7, take 1 off each side, then make 2 groups.",
+    "Tap a block to take it off both pans at once. When only equal stacks of x are left, tap Split to share them into equal groups.",
 };
 
 // Which on-screen feature Sage points to (and highlights) for each interaction.
@@ -47,7 +48,7 @@ const FEATURES: Record<
   },
   "choose-number": { tip: "Tap your answer below.", region: "numbers" },
   "remove-both-sides": {
-    tip: "Tap blocks right on the scale - take the same off both sides.",
+    tip: "Tap a block - it comes off both pans together.",
     highlight: "blocks",
     region: "scale",
   },
@@ -57,7 +58,7 @@ const FEATURES: Record<
     region: "scale",
   },
   "solve-equation": {
-    tip: "Clear extra blocks, then use Split here.",
+    tip: "Tap to clear matching blocks from both pans, then use Split here.",
     highlight: "split",
     region: "scale",
   },
@@ -69,11 +70,18 @@ function capabilitiesFor(
 ): ScaleCapabilities {
   switch (interaction) {
     case "drag-balance":
+      return { drag: true, removeUnits: true };
     case "remove-both-sides":
-      return { drag: true, removeUnits: true, removeVars: removableVars };
+      return { drag: true, removeUnits: true, removeVars: removableVars, paired: true };
     case "split-both-sides":
     case "solve-equation":
-      return { drag: true, removeUnits: true, removeVars: removableVars, split: true };
+      return {
+        drag: true,
+        removeUnits: true,
+        removeVars: removableVars,
+        split: true,
+        paired: true,
+      };
     case "choose-number":
       return {};
   }
@@ -94,7 +102,9 @@ export function ProblemRunner({
   const caps = capabilitiesFor(step.interaction, step.removableVars);
 
   const [state, setState] = useState(step.initial);
-  const [tray, setTray] = useState(step.tray ?? []);
+  const [tray, setTray] = useState<TrayEntry[]>(() =>
+    (step.tray ?? []).map((item) => ({ item })),
+  );
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [solved, setSolved] = useState(false);
@@ -119,7 +129,7 @@ export function ProblemRunner({
 
   function restartProblem() {
     setState(step.initial);
-    setTray(step.tray ?? []);
+    setTray((step.tray ?? []).map((item) => ({ item })));
     setResult(null);
     setPicked(null);
     setSolved(false);

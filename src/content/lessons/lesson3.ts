@@ -40,7 +40,7 @@ export const lesson3: Lesson = {
         },
         default: "Take one x off each side, then clear the extra blocks from both sides.",
       },
-      hint: "Tap an x on the left and an x on the right to remove both. Then take 1 unit off each side.",
+      hint: "Tap an x to take one off both pans, then tap a unit to take one off both pans.",
       hintAfterAttempts: 1,
     },
     {
@@ -68,7 +68,7 @@ export const lesson3: Lesson = {
         },
         default: "Take an x off both sides, then solve the two-step that is left.",
       },
-      hint: "Take 1 x off each side (2x + 1 = 5), then 1 unit off each side (2x = 4), then split into 2.",
+      hint: "Tap an x to clear one from both pans (2x + 1 = 5), tap a unit to clear one (2x = 4), then Split into 2 groups.",
       hintAfterAttempts: 1,
       easierAfterAttempts: 1,
       easier: {
@@ -87,7 +87,7 @@ export const lesson3: Lesson = {
           },
           default: "Take one x off each side, then one unit off each side.",
         },
-        hint: "Remove an x from each pan, then a single block from each pan.",
+        hint: "Tap an x to take one off both pans, then tap a unit to take one off both pans.",
       },
     },
   ],
