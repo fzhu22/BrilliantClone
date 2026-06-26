@@ -58,24 +58,6 @@ export const lesson2: Lesson = {
       },
       hint: "Step 1: take 1 off each side (2x = 6). Step 2: split both sides into 2 groups.",
       hintAfterAttempts: 1,
-      easierAfterAttempts: 1,
-      easier: {
-        type: "problem",
-        prompt: "Warm-up: the +1 is gone. Split 2x = 6 to find one x.",
-        interaction: "split-both-sides",
-        initial: { left: xs(2, 3), right: units(6) },
-        validator: { kind: "isolate-variable" },
-        feedback: {
-          correct: "Split into 2 groups and one x balances 3. x = 3!",
-          byMistake: {
-            "one-side-only": "Split both sides the same way.",
-            unbalanced: "Keep it level - divide both pans into 2 groups.",
-            "not-isolated": "Keep one group on each side.",
-          },
-          default: "Set the groups to 2 and tap Split.",
-        },
-        hint: "Make 2 groups, then go back and take the +1 off both sides first.",
-      },
     },
     // Bigger coefficient.
     {

@@ -26,9 +26,35 @@ export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
 );
 
+// App Check site key (reCAPTCHA Enterprise). When present, App Check is started
+// to protect backend resources (notably the AI Logic / Gemini quota) from abuse.
+const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
 let app: FirebaseApp | undefined;
 let authInstance: Auth | undefined;
 let dbInstance: Firestore | undefined;
+let appCheckStarted = false;
+
+/**
+ * Best-effort App Check initialization. Loaded lazily (only when a site key is
+ * configured) so firebase/app-check isn't bundled otherwise. Swap
+ * ReCaptchaEnterpriseProvider for ReCaptchaV3Provider if using classic reCAPTCHA.
+ */
+function maybeStartAppCheck(firebaseApp: FirebaseApp) {
+  if (appCheckStarted || typeof window === "undefined" || !recaptchaSiteKey) return;
+  appCheckStarted = true;
+  void import("firebase/app-check")
+    .then(({ initializeAppCheck, ReCaptchaEnterpriseProvider }) => {
+      initializeAppCheck(firebaseApp, {
+        provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    })
+    .catch(() => {
+      // App Check is best-effort; never let it break app startup.
+      appCheckStarted = false;
+    });
+}
 
 export function getFirebaseApp(): FirebaseApp | undefined {
   if (!isFirebaseConfigured) return undefined;
@@ -37,6 +63,7 @@ export function getFirebaseApp(): FirebaseApp | undefined {
       ? getApp()
       : initializeApp(firebaseConfig as Record<string, string>);
   }
+  maybeStartAppCheck(app);
   return app;
 }
 

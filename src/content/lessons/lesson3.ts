@@ -70,25 +70,6 @@ export const lesson3: Lesson = {
       },
       hint: "Tap an x to clear one from both pans (2x + 1 = 5), tap a unit to clear one (2x = 4), then Split into 2 groups.",
       hintAfterAttempts: 1,
-      easierAfterAttempts: 1,
-      easier: {
-        type: "problem",
-        prompt: "Warm-up: solve 2x + 1 = x + 3. Take an x off both sides.",
-        interaction: "remove-both-sides",
-        removableVars: true,
-        initial: { left: [...xs(2, 2), ...units(1)], right: [...xs(1, 2), ...units(3)] },
-        validator: { kind: "isolate-variable" },
-        feedback: {
-          correct: "Take an x off both sides, clear 1 from each, and x = 2!",
-          byMistake: {
-            "one-side-only": "Remove from both sides equally.",
-            unbalanced: "Keep it level.",
-            "not-isolated": "Take an x off both sides, then 1 unit off both sides.",
-          },
-          default: "Take one x off each side, then one unit off each side.",
-        },
-        hint: "Tap an x to take one off both pans, then tap a unit to take one off both pans.",
-      },
     },
   ],
 };

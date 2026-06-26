@@ -17,11 +17,22 @@ export interface LessonProgress {
   completed?: boolean;
   currentStepIndex?: number;
   attempts?: number;
-  /** Best-so-far share of problems solved on the first try (0..1). */
+  /** Best-so-far mastery as a 0..1 share (mirrors masteryPercent/100). */
   accuracy?: number;
-  /** True once accuracy reaches the mastery threshold. */
+  /** Best-so-far AI mastery score (0..100). */
+  masteryPercent?: number;
+  /** Latest AI mastery summary shown on the completion screen. */
+  masteryNote?: string;
+  /** True once the lesson has been mastered (badge awarded). */
   mastered?: boolean;
   updatedAt?: number;
+}
+
+/** The outcome of a mastery assessment (AI-judged, or heuristic fallback). */
+export interface MasteryOutcome {
+  masteryPercent: number;
+  mastered: boolean;
+  note?: string;
 }
 
 export interface AnswerEvent {
@@ -67,7 +78,7 @@ interface ProgressContextValue {
     correct: boolean,
     mistake?: string,
   ) => void;
-  completeLesson: (lessonId: string, sessionAccuracy: number) => void;
+  completeLesson: (lessonId: string, outcome: MasteryOutcome) => void;
   /** Awards points for `key` only the first time (no farming via replays). */
   awardPointsOnce: (key: string, amount: number) => void;
   clearBurst: () => void;
@@ -167,23 +178,29 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     write({ lessons: { [lessonId]: { attempts } }, history });
   }
 
-  function completeLesson(lessonId: string, sessionAccuracy: number) {
+  function completeLesson(lessonId: string, outcome: MasteryOutcome) {
     const prev = latest.current.lessons?.[lessonId];
-    // Keep the best accuracy across attempts so replays can raise mastery.
-    const accuracy = Math.max(prev?.accuracy ?? 0, sessionAccuracy);
-    const mastered = accuracy >= MASTERY_THRESHOLD;
+    // Keep the best mastery across replays; once mastered, stay mastered.
+    const masteryPercent = Math.max(
+      prev?.masteryPercent ?? 0,
+      Math.round(outcome.masteryPercent),
+    );
+    const mastered = Boolean(prev?.mastered) || outcome.mastered;
+    const accuracy = masteryPercent / 100;
+    const lessonUpdate = {
+      completed: true,
+      accuracy,
+      masteryPercent,
+      mastered,
+      masteryNote: outcome.note ?? prev?.masteryNote,
+    };
     setProgress((p) => ({
       ...p,
-      lessons: {
-        ...p.lessons,
-        [lessonId]: { ...p.lessons?.[lessonId], completed: true, accuracy, mastered },
-      },
+      lessons: { ...p.lessons, [lessonId]: { ...p.lessons?.[lessonId], ...lessonUpdate } },
     }));
     write({
       streak: nextStreak(),
-      lessons: {
-        [lessonId]: { completed: true, accuracy, mastered, updatedAt: Date.now() },
-      },
+      lessons: { [lessonId]: { ...lessonUpdate, updatedAt: Date.now() } },
     });
   }
 

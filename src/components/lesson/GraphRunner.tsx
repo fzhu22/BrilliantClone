@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/Button";
 import { Slider } from "@/components/ui/Slider";
 import { FeedbackBanner } from "./FeedbackBanner";
 import { AvatarCoach } from "./AvatarCoach";
+import { AiHint } from "./AiHint";
+import { isAiConfigured } from "@/lib/ai/client";
+import { generateHint } from "@/lib/ai/tutor";
+import {
+  buildGraphProblemContext,
+  buildGraphAttemptContext,
+} from "@/lib/ai/context";
+import type { HintResult } from "@/lib/ai/types";
 
 const SAY =
   "Drag the two sliders to match the dashed line. m tilts the line (slope) and b slides it up or down (the y-intercept).";
@@ -26,10 +34,17 @@ export function GraphRunner({
   step,
   onContinue,
   onAttempt,
+  lessonId,
+  lessonTitle,
+  stepIndex,
 }: {
   step: GraphProblemStep;
   onContinue: () => void;
   onAttempt?: (correct: boolean, mistake?: string) => void;
+  /** Lesson/step identity, used only to give the AI tutor context. */
+  lessonId?: string;
+  lessonTitle?: string;
+  stepIndex?: number;
 }) {
   const range = Math.max(Math.abs(step.bRange[0]), step.bRange[1], 6);
   const mStep = step.mStep ?? step.sliderStep ?? 1;
@@ -40,18 +55,60 @@ export function GraphRunner({
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [solved, setSolved] = useState(false);
   const [tourActive, setTourActive] = useState(false);
+  // AI tutor state (Feature 1 hint + Feature 2 review note).
+  const [attempts, setAttempts] = useState(0);
+  const [mistakes, setMistakes] = useState<string[]>([]);
+  const [aiHint, setAiHint] = useState<HintResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   function check() {
     const r = validate(step, { kind: "line", m, b });
     setResult(r);
-    if (r.correct) setSolved(true);
+    if (r.correct) {
+      setSolved(true);
+      setAiHint(null);
+      setAiLoading(false);
+    } else {
+      const attemptNumber = attempts + 1;
+      setAttempts(attemptNumber);
+      const priorMistakes = mistakes;
+      if (r.mistake) setMistakes((prev) => [...prev, r.mistake!]);
+      void runAiCoach(r.mistake, attemptNumber, priorMistakes);
+    }
     onAttempt?.(r.correct, r.mistake);
+  }
+
+  async function runAiCoach(
+    mistake: string | undefined,
+    attemptNumber: number,
+    priorMistakes: string[],
+  ) {
+    if (!isAiConfigured) return;
+    const problemCtx = buildGraphProblemContext(
+      { lessonId, lessonTitle, stepIndex },
+      step,
+    );
+    const attemptCtx = buildGraphAttemptContext({
+      step,
+      m,
+      b,
+      mistake,
+      attemptNumber,
+      priorMistakes,
+    });
+
+    setAiLoading(true);
+    const hint = await generateHint(problemCtx, attemptCtx);
+    setAiLoading(false);
+    if (hint) setAiHint(hint);
   }
 
   function change(setter: (n: number) => void, value: number) {
     if (solved) return;
     setter(value);
     setResult(null);
+    setAiHint(null);
+    setAiLoading(false);
   }
 
   const message = result ? feedbackFor(step, result) : null;
@@ -112,7 +169,15 @@ export function GraphRunner({
         <FeedbackBanner correct={result.correct} message={message} />
       )}
 
-      {showHint && (
+      {/* AI hint (Feature 1) on a wrong answer, with the authored hint as fallback */}
+      {isAiConfigured && result && !result.correct && (aiLoading || aiHint) && (
+        <AiHint
+          loading={aiLoading}
+          hint={aiHint?.hint}
+          conceptTag={aiHint?.conceptTag}
+        />
+      )}
+      {showHint && !aiHint && !aiLoading && (
         <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm text-ink">
           <span className="font-semibold text-info">Hint:</span> {step.hint}
         </div>

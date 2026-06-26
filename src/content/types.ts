@@ -76,13 +76,6 @@ export interface ScaleProblemStep extends ProblemBase {
   /** Allow removing variable blocks too (variables on both sides). */
   removableVars?: boolean;
   validator: ValidatorConfig;
-  /**
-   * Optional easier, scaffolded sub-problem offered after repeated misses.
-   * Solving it returns the learner to this (main) problem to try again.
-   */
-  easier?: ScaleProblemStep;
-  /** Offer the easier step after this many wrong attempts (default 2). */
-  easierAfterAttempts?: number;
 }
 
 /** A problem solved on the coordinate grid: match a target line y = mx + b. */

@@ -2,10 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { Lesson } from "@/content/types";
+import type { Lesson, ProblemStep } from "@/content/types";
 import { getNextLessonId } from "@/content";
-import { useProgress, POINTS_PER_PROBLEM, POINTS_PER_LESSON } from "@/lib/progress";
+import {
+  useProgress,
+  POINTS_PER_PROBLEM,
+  POINTS_PER_LESSON,
+  MASTERY_THRESHOLD,
+  type MasteryOutcome,
+} from "@/lib/progress";
 import { isUnlocked } from "@/lib/courseStatus";
+import { isAiConfigured } from "@/lib/ai/client";
+import { assessMastery } from "@/lib/ai/tutor";
+import type { MasteryResult, MasterySummary } from "@/lib/ai/types";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "./ProgressBar";
@@ -26,11 +35,14 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   } = useProgress();
   const [stepIndex, setStepIndex] = useState(0);
   const [done, setDone] = useState(false);
+  const [mastery, setMastery] = useState<MasteryResult | null>(null);
+  const [masteryLoading, setMasteryLoading] = useState(false);
   const hydrated = useRef(false);
 
-  // Per-session first-try tracking for the mastery (accuracy) signal.
+  // Per-session tracking that feeds the mastery assessment.
   const hadWrong = useRef<Record<number, boolean>>({});
   const firstTry = useRef<Record<number, boolean>>({});
+  const sessionLog = useRef<Record<number, { attempts: number; mistakes: string[] }>>({});
 
   const total = lesson.steps.length;
   const problemTotal = lesson.steps.filter((s) => s.type === "problem").length;
@@ -45,6 +57,9 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   // Shared by both the scale and graph runners.
   function handleAttempt(correct: boolean, mistake?: string) {
     recordAttempt(lesson.id, stepIndex, correct, mistake);
+    const log = (sessionLog.current[stepIndex] ??= { attempts: 0, mistakes: [] });
+    log.attempts += 1;
+    if (mistake) log.mistakes.push(mistake);
     if (!correct) {
       hadWrong.current[stepIndex] = true;
     } else {
@@ -76,10 +91,57 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       setStepIndex(next);
       saveStep(lesson.id, next);
     } else {
-      setDone(true);
-      completeLesson(lesson.id, sessionAccuracy());
-      awardPointsOnce(`${lesson.id}#complete`, POINTS_PER_LESSON);
+      void finishLesson();
     }
+  }
+
+  /** Build the per-problem solve summary that the AI grades for mastery. */
+  function buildMasterySummary(): MasterySummary {
+    const problems = lesson.steps
+      .map((s, idx) => ({ s, idx }))
+      .filter((e): e is { s: ProblemStep; idx: number } => e.s.type === "problem")
+      .map(({ s, idx }) => {
+        const log = sessionLog.current[idx] ?? { attempts: 0, mistakes: [] };
+        return {
+          prompt: s.prompt,
+          interaction: s.interaction,
+          attempts: log.attempts,
+          solvedFirstTry: firstTry.current[idx] ?? false,
+          mistakes: log.mistakes,
+        };
+      });
+    return { lessonTitle: lesson.title, problems };
+  }
+
+  // Finish: award points, then let the AI gauge mastery from how the lesson was
+  // solved. Falls back to the first-try heuristic when AI is off or unavailable.
+  async function finishLesson() {
+    setDone(true);
+    awardPointsOnce(`${lesson.id}#complete`, POINTS_PER_LESSON);
+
+    const firstTryFraction = sessionAccuracy();
+    const fallback: MasteryOutcome = {
+      masteryPercent: Math.round(firstTryFraction * 100),
+      mastered: firstTryFraction >= MASTERY_THRESHOLD,
+    };
+
+    if (!isAiConfigured) {
+      setMastery({ ...fallback, summary: "" });
+      completeLesson(lesson.id, fallback);
+      return;
+    }
+
+    setMasteryLoading(true);
+    const ai = await assessMastery(buildMasterySummary());
+    setMasteryLoading(false);
+
+    const result: MasteryResult = ai ?? { ...fallback, summary: "" };
+    setMastery(result);
+    completeLesson(lesson.id, {
+      masteryPercent: result.masteryPercent,
+      mastered: result.mastered,
+      note: result.summary,
+    });
   }
 
   // Replay the lesson from the start (used by "Replay to master"). The route is
@@ -87,6 +149,9 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   function replayLesson() {
     hadWrong.current = {};
     firstTry.current = {};
+    sessionLog.current = {};
+    setMastery(null);
+    setMasteryLoading(false);
     setDone(false);
     setStepIndex(0);
     saveStep(lesson.id, 0);
@@ -118,7 +183,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
         <CompletionMilestone
           lesson={lesson}
           nextLessonId={getNextLessonId(lesson.id)}
-          accuracy={sessionAccuracy()}
+          mastery={mastery}
+          loading={masteryLoading}
           onReplay={replayLesson}
         />
       </div>
@@ -142,6 +208,9 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           step={step}
           onContinue={advance}
           onAttempt={handleAttempt}
+          lessonId={lesson.id}
+          lessonTitle={lesson.title}
+          stepIndex={stepIndex}
         />
       ) : (
         <ProblemRunner
@@ -149,6 +218,9 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           step={step}
           onContinue={advance}
           onAttempt={handleAttempt}
+          lessonId={lesson.id}
+          lessonTitle={lesson.title}
+          stepIndex={stepIndex}
         />
       )}
     </div>

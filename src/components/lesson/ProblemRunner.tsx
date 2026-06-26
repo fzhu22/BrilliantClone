@@ -20,6 +20,14 @@ import { NumberPad } from "@/components/ui/NumberPad";
 import { FeedbackBanner } from "./FeedbackBanner";
 import { AvatarCoach } from "./AvatarCoach";
 import { Mascot } from "./Mascot";
+import { AiHint } from "./AiHint";
+import { isAiConfigured } from "@/lib/ai/client";
+import { generateHint } from "@/lib/ai/tutor";
+import {
+  buildScaleProblemContext,
+  buildScaleAttemptContext,
+} from "@/lib/ai/context";
+import type { HintResult } from "@/lib/ai/types";
 
 // One simple, middle-school-friendly instruction per interaction. Kept to a
 // single bubble so Sage doesn't take long to get through.
@@ -91,10 +99,17 @@ export function ProblemRunner({
   step,
   onContinue,
   onAttempt,
+  lessonId,
+  lessonTitle,
+  stepIndex,
 }: {
   step: ScaleProblemStep;
   onContinue: () => void;
   onAttempt?: (correct: boolean, mistake?: string) => void;
+  /** Lesson/step identity, used only to give the AI tutor context. */
+  lessonId?: string;
+  lessonTitle?: string;
+  stepIndex?: number;
 }) {
   const isChoose = step.interaction === "choose-number";
   const say = SAY[step.interaction];
@@ -109,22 +124,62 @@ export function ProblemRunner({
   const [attempts, setAttempts] = useState(0);
   const [solved, setSolved] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
-  const [inEasier, setInEasier] = useState(false);
   // After Sage finishes the intro, point to the key feature (highlight + tip).
   const [tourActive, setTourActive] = useState(false);
+  // AI hint state (shown on a wrong answer).
+  const [aiHint, setAiHint] = useState<HintResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [mistakes, setMistakes] = useState<string[]>([]);
 
   function runCheck(attempt: Attempt) {
     const r = validate(step, attempt);
     setResult(r);
-    if (r.correct) setSolved(true);
-    else setAttempts((a) => a + 1);
+    if (r.correct) {
+      setSolved(true);
+      setAiHint(null);
+      setAiLoading(false);
+    } else {
+      const attemptNumber = attempts + 1;
+      setAttempts(attemptNumber);
+      const priorMistakes = mistakes;
+      if (r.mistake) setMistakes((prev) => [...prev, r.mistake!]);
+      void runAiCoach(attempt, r.mistake, attemptNumber, priorMistakes);
+    }
     onAttempt?.(r.correct, r.mistake);
+  }
+
+  // Ask the AI tutor for a mistake-specific hint on a wrong answer.
+  async function runAiCoach(
+    attempt: Attempt,
+    mistake: string | undefined,
+    attemptNumber: number,
+    priorMistakes: string[],
+  ) {
+    if (!isAiConfigured) return;
+    const problemCtx = buildScaleProblemContext(
+      { lessonId, lessonTitle, stepIndex },
+      step,
+    );
+    const attemptCtx = buildScaleAttemptContext({
+      step,
+      attempt,
+      mistake,
+      attemptNumber,
+      priorMistakes,
+    });
+
+    setAiLoading(true);
+    const hint = await generateHint(problemCtx, attemptCtx);
+    setAiLoading(false);
+    if (hint) setAiHint(hint);
   }
 
   function onScaleChange(next: ScaleChange) {
     setState(next.state);
     setTray(next.tray);
     setResult(null); // clear stale feedback as soon as they change the scale
+    setAiHint(null);
+    setAiLoading(false);
   }
 
   function restartProblem() {
@@ -133,6 +188,8 @@ export function ProblemRunner({
     setResult(null);
     setPicked(null);
     setSolved(false);
+    setAiHint(null);
+    setAiLoading(false);
     // attempts are kept so any earned hint stays available
   }
 
@@ -145,41 +202,10 @@ export function ProblemRunner({
   const message = result ? feedbackFor(step, result) : null;
   const showHint =
     !solved && Boolean(step.hint) && attempts >= (step.hintAfterAttempts ?? 2);
-  const showEasierOffer =
-    !solved &&
-    Boolean(step.easier) &&
-    attempts >= (step.easierAfterAttempts ?? 2);
 
   const l = sideTotal(state.left);
   const r = sideTotal(state.right);
   const balanced = l === r;
-
-  // Detour: a simpler authored sub-problem to scaffold a stuck learner. It does
-  // not report attempts (no onAttempt), so it never affects mastery or points.
-  if (inEasier && step.easier) {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm text-ink">
-          <span className="font-semibold text-info">Warm-up.</span> Try this simpler
-          version first, then we&apos;ll head back to the problem.
-        </div>
-        <ProblemRunner
-          step={step.easier}
-          onContinue={() => {
-            setInEasier(false);
-            restartProblem();
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => setInEasier(false)}
-          className="text-xs font-semibold text-muted hover:text-ink"
-        >
-          Back to the problem
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,22 +274,18 @@ export function ProblemRunner({
         <FeedbackBanner correct={result.correct} message={message} />
       )}
 
-      {/* Hint after repeated misses */}
-      {showHint && (
+      {/* AI hint (Feature 1) on a wrong answer, with the authored hint as fallback */}
+      {isAiConfigured && result && !result.correct && (aiLoading || aiHint) && (
+        <AiHint
+          loading={aiLoading}
+          hint={aiHint?.hint}
+          conceptTag={aiHint?.conceptTag}
+        />
+      )}
+      {showHint && !aiHint && !aiLoading && (
         <div className="rounded-xl border border-info/30 bg-info/5 p-3 text-sm text-ink">
           <span className="font-semibold text-info">Hint:</span> {step.hint}
         </div>
-      )}
-
-      {/* Offer an easier scaffolded step when the learner is stuck */}
-      {showEasierOffer && (
-        <button
-          type="button"
-          onClick={() => setInEasier(true)}
-          className="rounded-xl border border-info/40 bg-info/10 px-4 py-2.5 text-sm font-semibold text-info transition-colors hover:bg-info/20"
-        >
-          Stuck? Try an easier version &rarr;
-        </button>
       )}
 
       {/* Actions */}
