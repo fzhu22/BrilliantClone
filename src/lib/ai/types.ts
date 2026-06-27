@@ -1,4 +1,5 @@
 import type { Interaction } from "@/content/types";
+import type { HintTier } from "./hintLadder";
 
 /**
  * A JSON-serializable snapshot of the problem the learner is on. The `goal`
@@ -34,6 +35,8 @@ export interface HintResult {
   hint: string;
   /** Optional short concept label, e.g. "keep both sides equal". */
   conceptTag?: string;
+  /** Escalation tier this hint was generated at (1 gentle -> 3 most concrete). */
+  tier?: HintTier;
 }
 
 /** One problem's solve history, fed to the mastery assessment. */

@@ -6,6 +6,7 @@
 // Cloud Function; here we send structured context and validate what comes back.
 
 import { getTutorCallable, isAiConfigured } from "./client";
+import { hintTier } from "./hintLadder";
 import type {
   AttemptContext,
   HintResult,
@@ -27,7 +28,9 @@ async function callTutor(req: Record<string, unknown>): Promise<unknown | null> 
   }
 }
 
-// Reuse a hint across identical (problem, mistake) situations to limit calls.
+// Reuse a hint across identical (problem, mistake, tier) situations to limit
+// calls. The tier is part of the key so escalating help on repeated misses is
+// not masked by a cached lower-tier hint.
 const hintCache = new Map<string, HintResult>();
 
 export async function generateHint(
@@ -35,7 +38,8 @@ export async function generateHint(
   attempt: AttemptContext,
 ): Promise<HintResult | null> {
   if (!isAiConfigured) return null;
-  const key = `${problem.lessonId}:${problem.stepIndex}:${attempt.mistake ?? "?"}`;
+  const tier = hintTier(attempt.attemptNumber);
+  const key = `${problem.lessonId}:${problem.stepIndex}:${attempt.mistake ?? "?"}:t${tier}`;
   const cached = hintCache.get(key);
   if (cached) return cached;
 
@@ -46,6 +50,7 @@ export async function generateHint(
     const out: HintResult = {
       hint: data.hint.trim(),
       conceptTag: data.conceptTag?.trim() || undefined,
+      tier: data.tier ?? tier,
     };
     hintCache.set(key, out);
     return out;

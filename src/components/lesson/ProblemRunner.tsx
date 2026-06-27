@@ -280,6 +280,7 @@ export function ProblemRunner({
           loading={aiLoading}
           hint={aiHint?.hint}
           conceptTag={aiHint?.conceptTag}
+          tier={aiHint?.tier}
         />
       )}
       {showHint && !aiHint && !aiLoading && (
