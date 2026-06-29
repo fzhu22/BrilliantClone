@@ -75,3 +75,33 @@ export function splitBoth(state: ScaleState, n: number): ScaleState | null {
   }
   return { left, right };
 }
+
+/** One side of the scale as a symbolic sum, e.g. "2x + 3", "x", or "0". */
+function sideToExpr(items: Item[]): string {
+  const varCounts = new Map<string, number>();
+  let units = 0;
+  for (const it of items) {
+    if (it.kind === "unit") units += 1;
+    else varCounts.set(it.label, (varCounts.get(it.label) ?? 0) + 1);
+  }
+  const terms: string[] = [];
+  for (const [label, count] of [...varCounts.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  )) {
+    terms.push(count === 1 ? label : `${count}${label}`);
+  }
+  // Show the constant only when there is one, or when the side is otherwise empty.
+  if (units > 0 || terms.length === 0) terms.push(String(units));
+  return terms.join(" + ");
+}
+
+/**
+ * Renders a scale state as the symbolic equation it represents, e.g.
+ * { left: [x, 1, 1], right: [1,1,1,1,1] } -> "x + 2 = 5". Uses block COUNTS and
+ * labels only (never a variable's hidden weight), so it can be shown next to the
+ * scale without revealing the answer. This is the bridge rung of concreteness
+ * fading: the manipulative and the symbols, side by side and in lockstep.
+ */
+export function equationFromScale(state: ScaleState): string {
+  return `${sideToExpr(state.left)} = ${sideToExpr(state.right)}`;
+}

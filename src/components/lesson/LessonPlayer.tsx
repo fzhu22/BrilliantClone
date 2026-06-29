@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Lesson, ProblemStep } from "@/content/types";
-import { getNextLessonId } from "@/content";
+import { isGraphStep, isEqualSignStep, isReflectStep } from "@/content/types";
+import { getNextLessonId, lessonSkills } from "@/content";
 import {
   useProgress,
   POINTS_PER_PROBLEM,
@@ -12,6 +13,7 @@ import {
   type MasteryOutcome,
 } from "@/lib/progress";
 import { isUnlocked } from "@/lib/courseStatus";
+import { skillMastered } from "@/lib/scaffold";
 import { isAiConfigured } from "@/lib/ai/client";
 import { assessMastery } from "@/lib/ai/tutor";
 import type { MasteryResult, MasterySummary } from "@/lib/ai/types";
@@ -19,8 +21,11 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "./ProgressBar";
 import { StepConcept } from "./StepConcept";
+import { StepWorkedExample } from "./StepWorkedExample";
+import { StepReflect } from "./StepReflect";
 import { ProblemRunner } from "./ProblemRunner";
 import { GraphRunner } from "./GraphRunner";
+import { EqualSignRunner } from "./EqualSignRunner";
 import { CompletionMilestone } from "./CompletionMilestone";
 
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
@@ -29,6 +34,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
     loading,
     saveStep,
     recordAttempt,
+    recordSkillAttempt,
+    recordDiagnostic,
     completeLesson,
     awardPointsOnce,
     flashCorrect,
@@ -57,6 +64,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   // Shared by both the scale and graph runners.
   function handleAttempt(correct: boolean, mistake?: string) {
     recordAttempt(lesson.id, stepIndex, correct, mistake);
+    const current = lesson.steps[stepIndex];
+    if (current.type === "problem") recordSkillAttempt(current.skill, correct);
     const log = (sessionLog.current[stepIndex] ??= { attempts: 0, mistakes: [] });
     log.attempts += 1;
     if (mistake) log.mistakes.push(mistake);
@@ -84,6 +93,23 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       setStepIndex(lp.currentStepIndex);
     }
   }, [loading, progress, lesson.id, total]);
+
+  // Fade worked examples for experts (expertise reversal, SPOV 1): if the current
+  // step is a worked example for an already-mastered skill, skip past it so the
+  // support withdraws on a mastery-tied schedule rather than a fixed one.
+  useEffect(() => {
+    const s = lesson.steps[stepIndex];
+    if (
+      s?.type === "worked-example" &&
+      stepIndex < total - 1 &&
+      skillMastered(progress.skills, s.skill)
+    ) {
+      const next = stepIndex + 1;
+      setStepIndex(next);
+      saveStep(lesson.id, next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepIndex, lesson, total, progress.skills]);
 
   function advance() {
     if (stepIndex < total - 1) {
@@ -124,6 +150,17 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
       masteryPercent: Math.round(firstTryFraction * 100),
       mastered: firstTryFraction >= MASTERY_THRESHOLD,
     };
+
+    // Record the equals-sign diagnostic when this lesson is the check (SPOV 2).
+    // The relational understanding it measures gates the symbolic work that
+    // follows - which mastery-gating then enforces lesson by lesson.
+    if (lessonSkills(lesson.id).includes("equal-sign")) {
+      recordDiagnostic(
+        "equalSign",
+        firstTryFraction >= MASTERY_THRESHOLD,
+        Math.round(firstTryFraction * 100),
+      );
+    }
 
     if (!isAiConfigured) {
       setMastery({ ...fallback, summary: "" });
@@ -168,7 +205,8 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
         </div>
         <h2 className="text-xl font-bold">This lesson is locked</h2>
         <p className="text-muted">
-          Finish the earlier lessons first &mdash; the course builds step by step.
+          Master the earlier lessons first &mdash; the next one opens once your
+          skills cross the bar, not just when a lesson is finished.
         </p>
         <Link href="/">
           <Button>Back to your path</Button>
@@ -202,7 +240,11 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
 
       {step.type === "concept" ? (
         <StepConcept step={step} onContinue={advance} />
-      ) : step.interaction === "match-line" ? (
+      ) : step.type === "worked-example" ? (
+        <StepWorkedExample step={step} onContinue={advance} />
+      ) : isReflectStep(step) ? (
+        <StepReflect step={step} onContinue={advance} />
+      ) : isGraphStep(step) ? (
         <GraphRunner
           key={stepIndex}
           step={step}
@@ -211,6 +253,13 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
           lessonId={lesson.id}
           lessonTitle={lesson.title}
           stepIndex={stepIndex}
+        />
+      ) : isEqualSignStep(step) ? (
+        <EqualSignRunner
+          key={stepIndex}
+          step={step}
+          onContinue={advance}
+          onAttempt={handleAttempt}
         />
       ) : (
         <ProblemRunner

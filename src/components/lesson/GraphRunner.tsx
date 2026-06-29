@@ -83,7 +83,8 @@ export function GraphRunner({
     attemptNumber: number,
     priorMistakes: string[],
   ) {
-    if (!isAiConfigured) return;
+    // Explore-first problems hold help back so the learner truly grapples (SPOV 5).
+    if (!isAiConfigured || step.explore) return;
     const problemCtx = buildGraphProblemContext(
       { lessonId, lessonTitle, stepIndex },
       step,
@@ -112,7 +113,8 @@ export function GraphRunner({
   }
 
   const message = result ? feedbackFor(step, result) : null;
-  const showHint = !solved && Boolean(step.hint) && result !== null && !result.correct;
+  const showHint =
+    !solved && !step.explore && Boolean(step.hint) && result !== null && !result.correct;
 
   return (
     <div className="flex flex-col gap-4">

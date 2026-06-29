@@ -12,6 +12,8 @@ import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { getDb } from "./firebase";
 import { useAuth } from "./auth";
 import { rollStreak, todayKey, type Streak } from "./streak";
+import { updateSkill, type SkillState } from "./mastery";
+import { REWARDS_ENABLED } from "./config";
 
 export interface LessonProgress {
   completed?: boolean;
@@ -43,6 +45,14 @@ export interface AnswerEvent {
   at: number;
 }
 
+/** A gating diagnostic result (e.g. the equals-sign check, SPOV 2). */
+export interface DiagnosticResult {
+  passed: boolean;
+  /** First-try score (0..100) at the time it was taken. */
+  score: number;
+  at: number;
+}
+
 export interface ProgressDoc {
   name?: string;
   streak?: Streak;
@@ -51,6 +61,10 @@ export interface ProgressDoc {
   awarded?: string[];
   lessons?: Record<string, LessonProgress>;
   history?: AnswerEvent[];
+  /** Per-skill mastery + spaced-review schedule, keyed by SkillId. */
+  skills?: Record<string, SkillState>;
+  /** Gating diagnostics (e.g. "equalSign"), keyed by diagnostic id. */
+  diagnostics?: Record<string, DiagnosticResult>;
 }
 
 /** Points awarded for a correct problem and for finishing a lesson. */
@@ -78,6 +92,10 @@ interface ProgressContextValue {
     correct: boolean,
     mistake?: string,
   ) => void;
+  /** Updates per-skill mastery + spaced-review schedule for one attempt. */
+  recordSkillAttempt: (skillId: string, correct: boolean) => void;
+  /** Records a gating diagnostic result (e.g. the equals-sign check). */
+  recordDiagnostic: (key: string, passed: boolean, score: number) => void;
   completeLesson: (lessonId: string, outcome: MasteryOutcome) => void;
   /** Awards points for `key` only the first time (no farming via replays). */
   awardPointsOnce: (key: string, amount: number) => void;
@@ -178,6 +196,24 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     write({ lessons: { [lessonId]: { attempts } }, history });
   }
 
+  // Folds one attempt into a skill's mastery + Leitner schedule. Called from
+  // lessons and from the review session, so any practice counts toward review.
+  function recordSkillAttempt(skillId: string, correct: boolean) {
+    const next = updateSkill(latest.current.skills?.[skillId], correct, Date.now());
+    setProgress((p) => ({ ...p, skills: { ...p.skills, [skillId]: next } }));
+    // Firestore merge:true deep-merges the map, so other skills are preserved.
+    write({ streak: nextStreak(), skills: { [skillId]: next } });
+  }
+
+  function recordDiagnostic(key: string, passed: boolean, score: number) {
+    const entry: DiagnosticResult = { passed, score, at: Date.now() };
+    setProgress((p) => ({
+      ...p,
+      diagnostics: { ...p.diagnostics, [key]: entry },
+    }));
+    write({ diagnostics: { [key]: entry } });
+  }
+
   function completeLesson(lessonId: string, outcome: MasteryOutcome) {
     const prev = latest.current.lessons?.[lessonId];
     // Keep the best mastery across replays; once mastered, stay mastered.
@@ -211,7 +247,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     const newAwarded = [...awarded, key];
     const newTotal = (latest.current.points ?? 0) + amount;
     setProgress((p) => ({ ...p, points: newTotal, awarded: newAwarded }));
-    setBurst({ id: Date.now() + Math.random(), amount });
+    // Points are still tallied (reversible), but the on-screen "+points" reward
+    // animation is demoted by default (SPOV 7); the green correct-flash remains as
+    // informational positive feedback, which the evidence says is safe/helpful.
+    if (REWARDS_ENABLED) setBurst({ id: Date.now() + Math.random(), amount });
     write({ points: newTotal, awarded: newAwarded });
   }
 
@@ -242,6 +281,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         burst,
         saveStep,
         recordAttempt,
+        recordSkillAttempt,
+        recordDiagnostic,
         completeLesson,
         awardPointsOnce,
         clearBurst,

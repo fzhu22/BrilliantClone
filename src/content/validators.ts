@@ -1,3 +1,4 @@
+import { isEqualSignStep, isGraphStep } from "./types";
 import type { Item, ProblemStep } from "./types";
 import type { ScaleState } from "./types";
 
@@ -11,7 +12,8 @@ export interface ValidationResult {
 export type Attempt =
   | { kind: "scale"; state: ScaleState }
   | { kind: "choice"; value: number }
-  | { kind: "line"; m: number; b: number };
+  | { kind: "line"; m: number; b: number }
+  | { kind: "judge"; value: boolean };
 
 export function itemWeight(item: Item): number {
   return item.kind === "unit" ? 1 : item.weight;
@@ -33,15 +35,34 @@ function isSingleVar(items: Item[]): boolean {
  * Pure, synchronous validation. Runs in well under the 100ms feedback budget.
  */
 export function validate(problem: ProblemStep, attempt: Attempt): ValidationResult {
-  // Graph problems are handled first; this also narrows `problem` to a scale
+  // Graph problems are handled first; this also narrows `problem` toward a scale
   // step for the switch below (match-line is the only graph interaction).
-  if (problem.interaction === "match-line") {
+  if (isGraphStep(problem)) {
     if (attempt.kind !== "line") return { correct: false, mistake: "default" };
     const slopeOk = attempt.m === problem.target.m;
     const interceptOk = attempt.b === problem.target.b;
     if (slopeOk && interceptOk) return { correct: true };
     if (!slopeOk && !interceptOk) return { correct: false, mistake: "both-off" };
     return { correct: false, mistake: slopeOk ? "intercept-off" : "slope-off" };
+  }
+
+  // SPOV 2 - the symbolic equals-sign problems (judge / fill-blank).
+  if (isEqualSignStep(problem)) {
+    const v = problem.validator;
+    if (v.kind === "equation-true") {
+      if (attempt.kind !== "judge") return { correct: false, mistake: "default" };
+      // A wrong call is the operational read of "=" (e.g. "8 = 5 + 3 is false").
+      return attempt.value === v.isTrue
+        ? { correct: true }
+        : { correct: false, mistake: "operational-read" };
+    }
+    // fill-blank: picking the left-hand total (ignoring the rest of the right
+    // side) is the operational error, so it gets its own code.
+    if (attempt.kind !== "choice") return { correct: false, mistake: "default" };
+    if (attempt.value === v.answer) return { correct: true };
+    const operational =
+      v.operational !== undefined && attempt.value === v.operational;
+    return { correct: false, mistake: operational ? "operational-sum" : "wrong-number" };
   }
 
   const v = problem.validator;

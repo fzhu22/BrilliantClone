@@ -25,15 +25,48 @@ export type ScaleInteraction =
   | "split-both-sides" // split both pans into equal groups
   | "solve-equation"; // combine remove + split to isolate the variable
 
+/** Symbolic equals-sign mechanics (no scale): judge a statement, fill a blank. */
+export type EqualSignInteraction = "judge-equation" | "fill-blank";
+
 /** Every UI mechanic, including the coordinate-grid graphing one. */
-export type Interaction = ScaleInteraction | "match-line";
+export type Interaction = ScaleInteraction | "match-line" | EqualSignInteraction;
 
 /** Pure logic that decides correctness, decoupled from the UI mechanic. */
 export type ValidatorConfig =
   | { kind: "sides-equal" }
   | { kind: "choose-number"; answer: number }
   | { kind: "isolate-variable" }
-  | { kind: "match-line" };
+  | { kind: "match-line" }
+  // SPOV 2: targets the operational equals-sign misconception.
+  | { kind: "equation-true"; isTrue: boolean }
+  | { kind: "fill-blank"; answer: number; operational?: number };
+
+/**
+ * A knowledge component (skill) a problem trains. Used for per-skill mastery
+ * tracking and the spaced + interleaved review system. Coarse on purpose so the
+ * hand-authored problem pool covers each one.
+ */
+export type SkillId =
+  | "equal-sign"
+  | "equality"
+  | "read-variable"
+  | "one-step"
+  | "two-step"
+  | "vars-both-sides"
+  | "graph-line"
+  | "slope";
+
+/** Short learner-facing label for each skill (used in review nudges). */
+export const SKILL_LABELS: Record<SkillId, string> = {
+  "equal-sign": "reading the equals sign",
+  equality: "balancing equal sides",
+  "read-variable": "reading a variable",
+  "one-step": "one-step equations",
+  "two-step": "two-step equations",
+  "vars-both-sides": "variables on both sides",
+  "graph-line": "graphing y = mx + b",
+  slope: "slope",
+};
 
 /** Hand-written, misconception-aware feedback. */
 export interface Feedback {
@@ -53,15 +86,109 @@ export interface ConceptStep {
   scale?: ScaleState;
 }
 
+/** One stage of a worked example: a scale state plus a one-line explanation. */
+export interface WorkedFrame {
+  scale: ScaleState;
+  /** Short explanation of the move that produced this state. */
+  caption: string;
+}
+
+/**
+ * A worked example the learner STUDIES rather than solves, shown as a sequence
+ * of frames. Worked examples speed novice schema-building (Sweller & Cooper,
+ * 1985) but turn into redundant load for experts (expertise reversal), so the
+ * player fades them once `skill` is mastered.
+ */
+export interface WorkedExampleStep {
+  type: "worked-example";
+  title?: string;
+  prompt: string;
+  /** Skill this example consolidates, so it can fade once mastered. */
+  skill: SkillId;
+  frames: WorkedFrame[];
+}
+
+/** One multiple-choice option for a reflection step, with its own feedback. */
+export interface ReflectOption {
+  id: string;
+  text: string;
+  correct: boolean;
+  /** Shown when this option is chosen (the teaching happens here). */
+  feedback: string;
+}
+
+interface ReflectBase {
+  /** Skill this reflection consolidates (for sequencing, not mastery scoring). */
+  skill: SkillId;
+  title?: string;
+  prompt: string;
+  options: ReflectOption[];
+}
+
+/**
+ * Spot-the-bug: study an INCORRECT worked solution and find the faulty step.
+ * Engaging with why an answer is wrong beats re-modeling the right procedure
+ * (Booth et al., 2013). SPOV 5.
+ */
+export interface SpotBugStep extends ReflectBase {
+  type: "spot-bug";
+  /** The worked-solution lines, shown in order (one contains the mistake). */
+  lines: string[];
+}
+
+/**
+ * Self-explanation: pick WHY a (correct) move keeps the equation balanced.
+ * Explaining the principle behind a step builds example-independent knowledge
+ * (Chi et al., 1989). SPOV 5.
+ */
+export interface SelfExplainStep extends ReflectBase {
+  type: "self-explain";
+  /** Optional scale to anchor the move being explained. */
+  scale?: ScaleState;
+}
+
+/** A single labelled solution shown in a contrasting-cases step. */
+export interface ContrastSolution {
+  label: string;
+  lines: string[];
+}
+
+/**
+ * Contrasting cases: a correct and a buggy solve side by side; choose the sound
+ * one and say why. SPOV 5.
+ */
+export interface ContrastStep extends ReflectBase {
+  type: "contrast";
+  left: ContrastSolution;
+  right: ContrastSolution;
+}
+
+export type ReflectStep = SpotBugStep | SelfExplainStep | ContrastStep;
+
+/** Where on the concreteness-fading ladder a problem is shown. */
+export type ScaffoldPref = "auto" | "concrete" | "bridge" | "abstract";
+
 /** Fields shared by every interactive problem. */
 interface ProblemBase {
   type: "problem";
   prompt: string;
+  /** Knowledge component this problem trains (per-skill mastery + review). */
+  skill: SkillId;
   feedback: Feedback;
   /** Optional scaffolding for repeated misses (the "Sam" persona). */
   hint?: string;
   /** Show the hint after this many wrong attempts (default 2). */
   hintAfterAttempts?: number;
+  /**
+   * Pin the concreteness-fading rung; default "auto" lets the engine choose from
+   * the learner's mastery (SPOV 1). Authored explore steps can pin "concrete".
+   */
+  scaffold?: ScaffoldPref;
+  /**
+   * Mark this as an explore-first problem: presented before instruction, with
+   * hints/feedback held back so the learner genuinely grapples first (SPOV 5).
+   */
+  explore?: boolean;
 }
 
 /** A problem solved on the balance scale. */
@@ -94,9 +221,55 @@ export interface GraphProblemStep extends ProblemBase {
   validator: { kind: "match-line" };
 }
 
-export type ProblemStep = ScaleProblemStep | GraphProblemStep;
+/**
+ * A symbolic equals-sign problem (no scale): either judge whether an equation is
+ * true, or fill a blank so both sides match. Authored against the operational
+ * "=" misconception with non-standard forms like `3 + 4 = ? + 5` and `8 = 5 + 3`
+ * (Knuth et al., 2006).
+ */
+export interface EqualSignProblemStep extends ProblemBase {
+  interaction: EqualSignInteraction;
+  /** The equation to show; use "?" to mark the blank in a fill-blank problem. */
+  equation: string;
+  /** fill-blank: tappable answer options. */
+  choices?: number[];
+  validator:
+    | { kind: "equation-true"; isTrue: boolean }
+    | { kind: "fill-blank"; answer: number; operational?: number };
+}
 
-export type Step = ConceptStep | ProblemStep;
+export type ProblemStep =
+  | ScaleProblemStep
+  | GraphProblemStep
+  | EqualSignProblemStep;
+
+export type Step =
+  | ConceptStep
+  | ProblemStep
+  | WorkedExampleStep
+  | ReflectStep;
+
+/** True for a reflection step (spot-the-bug / self-explain / contrast). */
+export function isReflectStep(s: Step): s is ReflectStep {
+  return (
+    s.type === "spot-bug" || s.type === "self-explain" || s.type === "contrast"
+  );
+}
+
+/** True for a coordinate-grid (graphing) problem. */
+export function isGraphStep(s: ProblemStep): s is GraphProblemStep {
+  return s.interaction === "match-line";
+}
+
+/** True for a symbolic equals-sign problem (judge / fill-blank, no scale). */
+export function isEqualSignStep(s: ProblemStep): s is EqualSignProblemStep {
+  return s.interaction === "judge-equation" || s.interaction === "fill-blank";
+}
+
+/** True for a balance-scale problem (everything that isn't graph or equals-sign). */
+export function isScaleStep(s: ProblemStep): s is ScaleProblemStep {
+  return !isGraphStep(s) && !isEqualSignStep(s);
+}
 
 export interface Lesson {
   id: string;

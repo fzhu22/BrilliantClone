@@ -19,6 +19,7 @@ export const lesson5: Lesson = {
     // Flat line: m = 0.
     {
       type: "problem",
+      skill: "slope",
       prompt: "This line is flat. Match it.",
       interaction: "match-line",
       target: { m: 0, b: 3 },
@@ -45,6 +46,7 @@ export const lesson5: Lesson = {
     // Fractional slope: m = 1/2. mStep lets the slope move in halves; b stays whole.
     {
       type: "problem",
+      skill: "slope",
       prompt: "Match this gentle climb. It goes up 1 for every 2 across.",
       interaction: "match-line",
       target: { m: 0.5, b: -1 },
@@ -66,6 +68,7 @@ export const lesson5: Lesson = {
     // Steep downhill: m = -2.
     {
       type: "problem",
+      skill: "slope",
       prompt: "Now a steep downhill line. Match it.",
       interaction: "match-line",
       target: { m: -2, b: 2 },

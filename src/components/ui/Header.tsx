@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useAuth, displayName } from "@/lib/auth";
 import { useProgress } from "@/lib/progress";
 import { lessonOrder } from "@/content";
+import { REWARDS_ENABLED } from "@/lib/config";
+import { ALL_SKILL_IDS, masteredSkillCount } from "@/lib/scaffold";
 import { StreakBadge } from "./StreakBadge";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -33,15 +35,29 @@ export function Header() {
 
         {configured && user ? (
           <div className="flex items-center gap-2 text-sm sm:gap-3">
+            {/* SPOV 7: lead with a competence signal (skills mastered), not a
+                points tally. Points/streak are demoted behind a flag. */}
             <span
               className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-1 font-semibold text-brand"
-              title={`${points} points`}
-              aria-label={`${points} points`}
+              title={`${masteredSkillCount(progress.skills)} of ${ALL_SKILL_IDS.length} skills mastered`}
+              aria-label={`${masteredSkillCount(progress.skills)} of ${ALL_SKILL_IDS.length} skills mastered`}
             >
-              <span aria-hidden>&#11088;</span>
-              {points}
+              <span aria-hidden>&#9733;</span>
+              {masteredSkillCount(progress.skills)}/{ALL_SKILL_IDS.length} skills
             </span>
-            <StreakBadge count={progress.streak?.count ?? 0} />
+            {REWARDS_ENABLED && (
+              <>
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-1 font-semibold text-brand"
+                  title={`${points} points`}
+                  aria-label={`${points} points`}
+                >
+                  <span aria-hidden>&#11088;</span>
+                  {points}
+                </span>
+                <StreakBadge count={progress.streak?.count ?? 0} />
+              </>
+            )}
             <span className="hidden text-muted sm:inline">
               Hi, <span className="font-semibold text-ink">{displayName(user)}</span>
             </span>

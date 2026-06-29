@@ -15,12 +15,14 @@ import {
   type ScaleChange,
   type TrayEntry,
 } from "@/components/scale/BalanceScale";
+import { equationFromScale } from "@/components/scale/scaleLogic";
 import { Button } from "@/components/ui/Button";
 import { NumberPad } from "@/components/ui/NumberPad";
 import { FeedbackBanner } from "./FeedbackBanner";
 import { AvatarCoach } from "./AvatarCoach";
 import { Mascot } from "./Mascot";
 import { AiHint } from "./AiHint";
+import { AbstractSolve } from "./AbstractSolve";
 import { isAiConfigured } from "@/lib/ai/client";
 import { generateHint } from "@/lib/ai/tutor";
 import {
@@ -28,6 +30,8 @@ import {
   buildScaleAttemptContext,
 } from "@/lib/ai/context";
 import type { HintResult } from "@/lib/ai/types";
+import { useProgress } from "@/lib/progress";
+import { scaffoldLevelFor, type ScaffoldLevel } from "@/lib/scaffold";
 
 // One simple, middle-school-friendly instruction per interaction. Kept to a
 // single bubble so Sage doesn't take long to get through.
@@ -71,6 +75,30 @@ const FEATURES: Record<
     region: "scale",
   },
 };
+
+const LEVEL_ORDER: ScaffoldLevel[] = ["concrete", "bridge", "abstract"];
+
+/**
+ * The highest rung a problem may fade to. Fading must never reveal the answer or
+ * land on a rung with no symbolic form:
+ *  - choose-number shows x beside its blocks, so its equation would give it away;
+ *  - drag-balance has no variable to solve symbolically (cap at the bridge);
+ *  - the symbols-only rung needs a solvable variable in the problem.
+ */
+function maxLevelFor(step: ScaleProblemStep): ScaffoldLevel {
+  if (step.interaction === "choose-number") return "concrete";
+  if (step.interaction === "drag-balance") return "bridge";
+  const hasVar = [...step.initial.left, ...step.initial.right].some(
+    (i) => i.kind === "var",
+  );
+  return hasVar ? "abstract" : "bridge";
+}
+
+function clampLevel(want: ScaffoldLevel, cap: ScaffoldLevel): ScaffoldLevel {
+  return LEVEL_ORDER[
+    Math.min(LEVEL_ORDER.indexOf(want), LEVEL_ORDER.indexOf(cap))
+  ];
+}
 
 function capabilitiesFor(
   interaction: ScaleInteraction,
@@ -131,6 +159,17 @@ export function ProblemRunner({
   const [aiLoading, setAiLoading] = useState(false);
   const [mistakes, setMistakes] = useState<string[]>([]);
 
+  // Concreteness fading (SPOV 1): choose this problem's rung from the learner's
+  // mastery of its skill, snapshotted once so the scale never vanishes mid-solve.
+  const { progress } = useProgress();
+  const [level] = useState<ScaffoldLevel>(() => {
+    const want =
+      step.scaffold && step.scaffold !== "auto"
+        ? step.scaffold
+        : scaffoldLevelFor(progress.skills?.[step.skill]);
+    return clampLevel(want, maxLevelFor(step));
+  });
+
   function runCheck(attempt: Attempt) {
     const r = validate(step, attempt);
     setResult(r);
@@ -155,7 +194,8 @@ export function ProblemRunner({
     attemptNumber: number,
     priorMistakes: string[],
   ) {
-    if (!isAiConfigured) return;
+    // Explore-first problems hold help back so the learner truly grapples (SPOV 5).
+    if (!isAiConfigured || step.explore) return;
     const problemCtx = buildScaleProblemContext(
       { lessonId, lessonTitle, stepIndex },
       step,
@@ -201,11 +241,21 @@ export function ProblemRunner({
 
   const message = result ? feedbackFor(step, result) : null;
   const showHint =
-    !solved && Boolean(step.hint) && attempts >= (step.hintAfterAttempts ?? 2);
+    !solved &&
+    !step.explore &&
+    Boolean(step.hint) &&
+    attempts >= (step.hintAfterAttempts ?? 2);
 
   const l = sideTotal(state.left);
   const r = sideTotal(state.right);
   const balanced = l === r;
+
+  // Top rung: the scale has faded away and the learner solves from symbols alone.
+  if (level === "abstract") {
+    return (
+      <AbstractSolve step={step} onContinue={onContinue} onAttempt={onAttempt} />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -249,6 +299,7 @@ export function ProblemRunner({
             onChange={onScaleChange}
             disabled={solved}
             highlight={tourActive && !solved ? feature.highlight : undefined}
+            equation={level === "bridge" ? equationFromScale(state) : undefined}
           />
           {/* Live status so the goal is always observable */}
           <div className="flex items-center justify-center gap-3 text-sm">

@@ -13,10 +13,13 @@ export const lesson1: Lesson = {
   tag: "Start",
   subtitle: "Equations are balances",
   steps: [
-    // Quick pretest: match a fixed target so "level = equal" lands fast.
+    // Explore-first pretest (SPOV 5): solvable by reasoning before any teaching,
+    // so the learner generates an approach first. Hints are held back here.
     {
       type: "problem",
-      prompt: "Drag blocks onto the right pan until the scale is level.",
+      skill: "equality",
+      explore: true,
+      prompt: "Before we explain anything - drag blocks onto the right pan until the scale is level.",
       interaction: "drag-balance",
       initial: {
         left: [
@@ -49,6 +52,7 @@ export const lesson1: Lesson = {
     // Read the variable off a balanced scale.
     {
       type: "problem",
+      skill: "read-variable",
       prompt: "The scale is balanced. What does x weigh?",
       interaction: "choose-number",
       initial: { left: [{ kind: "var", label: "x", weight: 4 }], right: units(4) },
@@ -71,6 +75,7 @@ export const lesson1: Lesson = {
     // One-step solve.
     {
       type: "problem",
+      skill: "one-step",
       prompt: "Solve for x. Get it alone while keeping the scale level.",
       interaction: "remove-both-sides",
       initial: {
@@ -90,9 +95,40 @@ export const lesson1: Lesson = {
       },
       hint: "There are 2 extra blocks with x. Take 2 off each side.",
     },
+    // Self-explanation (SPOV 5): name the principle behind the move just made.
+    {
+      type: "self-explain",
+      skill: "one-step",
+      prompt: "You took 2 blocks off each side and x came out to 3. Why did the scale stay level?",
+      scale: { left: [{ kind: "var", label: "x", weight: 3 }], right: units(3) },
+      options: [
+        {
+          id: "same",
+          text: "Because I removed the same amount from both sides.",
+          correct: true,
+          feedback:
+            "Exactly. Doing the same thing to both sides keeps them equal - that's the one rule behind every step.",
+        },
+        {
+          id: "heavier",
+          text: "Because the left side was heavier to start with.",
+          correct: false,
+          feedback:
+            "Not quite - the sides were equal the whole time. It stayed level because both sides changed the same way.",
+        },
+        {
+          id: "always",
+          text: "Because x is always 3.",
+          correct: false,
+          feedback:
+            "x isn't always 3 - that's just this problem. The balance held because both sides changed equally.",
+        },
+      ],
+    },
     // One more, slightly bigger.
     {
       type: "problem",
+      skill: "one-step",
       prompt: "Last one. Solve for x.",
       interaction: "remove-both-sides",
       initial: {

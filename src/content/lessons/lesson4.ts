@@ -16,6 +16,7 @@ export const lesson4: Lesson = {
     },
     {
       type: "problem",
+      skill: "graph-line",
       prompt: "Match the dashed line.",
       interaction: "match-line",
       target: { m: 1, b: 2 },
@@ -41,6 +42,7 @@ export const lesson4: Lesson = {
     },
     {
       type: "problem",
+      skill: "graph-line",
       prompt: "Match this steeper line.",
       interaction: "match-line",
       target: { m: 2, b: -1 },
@@ -60,6 +62,7 @@ export const lesson4: Lesson = {
     },
     {
       type: "problem",
+      skill: "graph-line",
       prompt: "This line goes downhill. Match it.",
       interaction: "match-line",
       target: { m: -1, b: 3 },

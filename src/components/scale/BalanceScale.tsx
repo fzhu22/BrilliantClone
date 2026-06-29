@@ -53,6 +53,12 @@ interface Props {
   disabled?: boolean;
   /** Pulse-highlight a specific control while the avatar points at it. */
   highlight?: "tray" | "split" | "blocks";
+  /**
+   * Symbolic equation shown above the pans (the "bridge" rung of concreteness
+   * fading). When set, the scale and the equation are displayed together so the
+   * learner sees the symbols mapped onto the manipulative.
+   */
+  equation?: string;
 }
 
 // ViewBox geometry. All drawing is in these coordinates; the SVG scales
@@ -101,6 +107,7 @@ export function BalanceScale({
   onChange,
   disabled = false,
   highlight,
+  equation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<{
@@ -217,8 +224,8 @@ export function BalanceScale({
       if (matchIndex === -1) {
         setRemoveMsg(
           item.kind === "var"
-            ? `Keep it fair: there's no ${item.label} on the other pan to take off too.`
-            : "Keep it fair: there's no matching block on the other pan to take off too.",
+            ? `Both sides must stay equal: there's no ${item.label} on the other pan to remove too, so this move would break the balance.`
+            : "Both sides must stay equal: there's no matching block on the other pan to remove too, so this move would break the balance.",
         );
         return;
       }
@@ -359,6 +366,18 @@ export function BalanceScale({
 
   return (
     <div className="no-touch-scroll select-none">
+      {/* Bridge rung of concreteness fading: the symbolic equation shown with the
+          scale, updating in lockstep as the learner acts on the pans. */}
+      {equation && (
+        <div className="mb-1 flex justify-center">
+          <span
+            className="rounded-lg border border-border bg-surface px-3 py-1 font-mono text-base font-bold tracking-wide text-ink"
+            aria-label={`Equation: ${equation}`}
+          >
+            {equation}
+          </span>
+        </div>
+      )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${VB_W} ${VB_H}`}

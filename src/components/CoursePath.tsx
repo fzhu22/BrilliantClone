@@ -11,10 +11,12 @@ function StatusPill({ s }: { s: LessonState }) {
         <span aria-hidden>&#9733;</span> Mastered
       </span>
     );
+  // Completed but not yet mastered: mastery, not completion, is the real bar
+  // (SPOV 6), so this stays amber until the skills cross the threshold.
   if (s.status === "completed")
     return (
-      <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
-        Completed
+      <span className="rounded-full bg-info/15 px-2.5 py-0.5 text-xs font-semibold text-info">
+        Practice to master
       </span>
     );
   if (s.status === "in-progress")
@@ -95,31 +97,40 @@ function Card({ s, index }: { s: LessonState; index: number }) {
           Recommended next &rarr;
         </div>
       )}
-
-      {s.needsReview && (
-        <div className="mt-3 text-xs font-semibold text-info">
-          Review to master{typeof s.accuracy === "number" ? ` (${Math.round(s.accuracy * 100)}% first try)` : ""} &rarr;
-        </div>
-      )}
     </div>
   );
 
   return (
-    <li className="flex items-stretch gap-3">
-      <div className="flex items-center">
-        <Node s={s} index={index} />
-      </div>
-      {s.unlocked ? (
-        <Link href={`/lesson/${s.id}`} className="flex flex-1">
-          {inner}
-        </Link>
-      ) : (
-        <div
-          className="flex flex-1 cursor-not-allowed"
-          title="Finish the previous lesson to unlock"
-        >
-          {inner}
+    <li className="flex flex-col gap-2">
+      <div className="flex items-stretch gap-3">
+        <div className="flex items-center">
+          <Node s={s} index={index} />
         </div>
+        {s.unlocked ? (
+          <Link href={`/lesson/${s.id}`} className="flex flex-1">
+            {inner}
+          </Link>
+        ) : (
+          <div
+            className="flex flex-1 cursor-not-allowed"
+            title="Master the previous lesson to unlock this one"
+          >
+            {inner}
+          </div>
+        )}
+      </div>
+
+      {/* Per-section practice: generated variants scoped to this lesson's skills.
+          When the lesson is completed but not mastered, this is the loop that
+          raises mastery and unlocks the next lesson (SPOV 6). */}
+      {s.completed && (
+        <Link
+          href={`/review?lesson=${s.id}`}
+          className="ml-12 inline-block text-xs font-semibold text-info hover:underline"
+        >
+          {s.mastered ? "Practice this section" : "Practice to unlock next"}
+          {` (${Math.round(s.masteryShare * 100)}% mastery)`} &rarr;
+        </Link>
       )}
     </li>
   );

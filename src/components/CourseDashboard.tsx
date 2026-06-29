@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth, displayName } from "@/lib/auth";
 import { useProgress } from "@/lib/progress";
+import { getDueSkills } from "@/lib/review";
+import { lessonMastered } from "@/lib/scaffold";
 import { StartLearningButton } from "@/components/StartLearningButton";
 import { CoursePath } from "@/components/CoursePath";
 import { ProgressBar } from "@/components/lesson/ProgressBar";
@@ -12,9 +15,11 @@ export function CourseDashboard() {
   const { progress } = useProgress();
 
   const totalLessons = lessons.length;
-  const completedLessons = lessons.filter(
-    (l) => progress.lessons?.[l.id]?.completed,
+  // SPOV 6/7: measure progress by mastery, not mere completion.
+  const masteredLessons = lessons.filter((l) =>
+    lessonMastered(progress.skills, l.id),
   ).length;
+  const dueCount = getDueSkills(progress.skills, Date.now()).length;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col px-6 py-12">
@@ -36,14 +41,41 @@ export function CourseDashboard() {
       <section className="mt-12 rounded-2xl border border-border bg-surface p-4 shadow-card">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
-            Course progress
+            Course mastery
           </h2>
           <span className="text-sm font-semibold text-brand">
-            {completedLessons} of {totalLessons} lessons
+            {masteredLessons} of {totalLessons} lessons mastered
           </span>
         </div>
-        <ProgressBar current={completedLessons} total={totalLessons} />
+        <ProgressBar current={masteredLessons} total={totalLessons} />
       </section>
+
+      {dueCount > 0 && (
+        <section className="mt-8">
+          <Link
+            href="/review"
+            className="block rounded-2xl border border-brand bg-brand/5 p-4 shadow-card transition-colors hover:bg-brand/10"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-brand">
+                  Daily review &middot; all topics
+                </div>
+                <div className="mt-1 font-semibold text-ink">
+                  {dueCount} skill{dueCount === 1 ? "" : "s"} due across your topics
+                </div>
+                <div className="text-sm text-muted">
+                  Spaced practice mixes everything you&apos;ve learned - the best way to
+                  keep it from fading.
+                </div>
+              </div>
+              <span className="shrink-0 text-2xl" aria-hidden>
+                &#128293;
+              </span>
+            </div>
+          </Link>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">

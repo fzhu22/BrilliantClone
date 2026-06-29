@@ -23,6 +23,7 @@ export const lesson3: Lesson = {
     // 2x + 1 = x + 4  ->  x = 3
     {
       type: "problem",
+      skill: "vars-both-sides",
       prompt: "Solve 2x + 1 = x + 4. Take an x off both sides first.",
       interaction: "remove-both-sides",
       removableVars: true,
@@ -43,6 +44,43 @@ export const lesson3: Lesson = {
       hint: "Tap an x to take one off both pans, then tap a unit to take one off both pans.",
       hintAfterAttempts: 1,
     },
+    // Contrasting cases (SPOV 5): a sound solve vs a buggy one, side by side.
+    {
+      type: "contrast",
+      skill: "vars-both-sides",
+      prompt: "Two students solved 2x + 1 = x + 4. Which one kept the scale balanced?",
+      left: {
+        label: "Student A",
+        lines: ["2x + 1 = x + 4", "take an x off BOTH sides", "x + 1 = 4", "x = 3"],
+      },
+      right: {
+        label: "Student B",
+        lines: ["2x + 1 = x + 4", "take an x off the LEFT only", "x + 1 = x + 4", "1 = 4 ??"],
+      },
+      options: [
+        {
+          id: "a",
+          text: "Student A - they took an x off both sides.",
+          correct: true,
+          feedback:
+            "Yes. Removing the same x from both sides keeps it balanced and gathers the x's on one side.",
+        },
+        {
+          id: "b",
+          text: "Student B - they took an x off one side.",
+          correct: false,
+          feedback:
+            "B changed only one side, so the scale tipped - that's how you end up with nonsense like 1 = 4.",
+        },
+        {
+          id: "both",
+          text: "Both are fine.",
+          correct: false,
+          feedback:
+            "Only A keeps both sides equal. B removed an x from one side only, breaking the balance.",
+        },
+      ],
+    },
     {
       type: "concept",
       title: "Sometimes x's are left over.",
@@ -52,6 +90,7 @@ export const lesson3: Lesson = {
     // 3x + 1 = x + 5  ->  2x + 1 = 5  ->  x = 2
     {
       type: "problem",
+      skill: "vars-both-sides",
       prompt: "Solve 3x + 1 = x + 5.",
       interaction: "solve-equation",
       removableVars: true,
